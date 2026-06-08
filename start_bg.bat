@@ -1,3 +1,5 @@
 @echo off
-cd /d "D:\ATEQ Test\ATEQ-Leak-Test"
-start "" /B "D:\ATEQ Test\ATEQ-Leak-Test\runtime18\node-v18.20.8-win-x64\node.exe" server.js >> "D:\ATEQ Test\ATEQ-Leak-Test\server.log" 2>&1
+cd /d "%~dp0"
+where node >nul 2>nul || exit /b 1
+if not exist "node_modules" call npm install
+start "" /B cmd /c "npm start 1>>server.out 2>>server.err"

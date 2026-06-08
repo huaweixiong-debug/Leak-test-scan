@@ -5,8 +5,10 @@
   "description": "ATEQ leak test phase-1 backend service",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node scripts/start.js",
     "dev": "node server.js",
+    "setup": "node scripts/doctor.js",
+    "doctor": "node scripts/doctor.js",
     "check": "node --check server.js && node --check modbusService.js && node --check scannerService.js && node --check db.js && node --check testWorkflowService.js"
   },
   "dependencies": {
