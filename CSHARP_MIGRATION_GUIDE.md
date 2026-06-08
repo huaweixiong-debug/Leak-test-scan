@@ -1,41 +1,55 @@
 # C# Migration Guide
 
-本文件用于把当前 Node.js 项目迁移成 C# / ASP.NET Core 项目。推荐策略是：保留现有前端页面和 API 路径不变，只重写后端服务。这样迁移后前端几乎不用改，现场测试风险最低。
+This document describes how to migrate the current Node.js leak-test scan project to C# / ASP.NET Core.
 
-## 1. 迁移目标
+The safest migration strategy is:
 
-目标：用 C# 实现与当前 Node.js 后端等价的服务。
+- Keep the current frontend files.
+- Keep the current `/api/...` routes and JSON shapes.
+- Replace only the backend implementation.
 
-保留：
+This keeps the browser UI almost unchanged and makes field validation much easier.
+
+## 1. Migration Goal
+
+Build a C# backend that behaves the same as the current Node.js backend.
+
+Keep:
 
 - `public/*.html`
 - `public/appearance.css`
 - `public/appearance.js`
-- 当前所有 `/api/...` 路径
-- 当前 JSON 输入输出格式
-- 当前业务规则：产品型号、程序号同步、扫码记录、扫码匹配、扫码启动、物理按键启动拦截、测试记录保存
+- all current `/api/...` routes
+- all current JSON request and response fields
+- product model rules
+- program number synchronization
+- scan recording
+- scan keyword matching
+- scan auto-start
+- physical-button start rejection
+- test record saving
 
-替换：
+Replace:
 
-- `server.js` -> ASP.NET Core Minimal API 或 Controllers
+- `server.js` -> ASP.NET Core Minimal API or Controllers
+- `db.js` -> SQLite repository layer
 - `modbusService.js` -> C# `ModbusService`
 - `scannerService.js` -> C# `ScannerService`
 - `testWorkflowService.js` -> C# `TestWorkflowService`
-- `db.js` -> C# SQLite Repository
 
-## 2. 推荐技术栈
+## 2. Recommended Technology Stack
 
-- .NET：`.NET 8 LTS`
-- Web：`ASP.NET Core`
-- 静态文件：`UseStaticFiles`
-- 数据库：`Microsoft.Data.Sqlite`
-- 串口：`System.IO.Ports`
-- Modbus RTU：`NModbus`
-- 后台轮询：`BackgroundService`
-- 日志：内置 `Microsoft.Extensions.Logging`
-- JSON：内置 `System.Text.Json`
+- Runtime: `.NET 8 LTS`
+- Web framework: `ASP.NET Core`
+- Static files: `UseStaticFiles`
+- Database: `Microsoft.Data.Sqlite`
+- Serial port: `System.IO.Ports`
+- Modbus RTU: `NModbus`
+- Background polling: `BackgroundService`
+- Logging: built-in `Microsoft.Extensions.Logging`
+- JSON: built-in `System.Text.Json`
 
-推荐 NuGet 包：
+Recommended NuGet packages:
 
 ```powershell
 dotnet add package Microsoft.Data.Sqlite
@@ -43,7 +57,7 @@ dotnet add package NModbus
 dotnet add package System.IO.Ports
 ```
 
-## 3. 新项目结构建议
+## 3. Suggested Project Structure
 
 ```text
 LeakTestScan.CSharp/
@@ -52,12 +66,12 @@ LeakTestScan.CSharp/
 ├── LeakTestScan.CSharp.csproj
 ├── Data/
 │   ├── AppDb.cs
-│   ├── Repositories/
-│   │   ├── ConfigRepository.cs
-│   │   ├── ProductRepository.cs
-│   │   ├── OperatorRepository.cs
-│   │   ├── ScannerEventRepository.cs
-│   │   └── TestRecordRepository.cs
+│   └── Repositories/
+│       ├── ConfigRepository.cs
+│       ├── ProductRepository.cs
+│       ├── OperatorRepository.cs
+│       ├── ScannerEventRepository.cs
+│       └── TestRecordRepository.cs
 ├── Models/
 │   ├── CommConfig.cs
 │   ├── ProductProfile.cs
@@ -85,52 +99,94 @@ LeakTestScan.CSharp/
     └── leak-test.db
 ```
 
-说明：
+Copy the current `public/` folder into `wwwroot/`.
 
-- 把当前 `public/` 内容复制到新项目 `wwwroot/`。
-- C# 项目启动后直接访问 `http://127.0.0.1:3000/`。
-- `data/` 不进 Git，用于本机配置和测试记录。
+The C# app should listen on:
 
-## 4. 当前 Node 模块到 C# 模块映射
+```text
+http://127.0.0.1:3000
+```
 
-| Node 文件 | C# 目标 | 说明 |
+## 4. Module Mapping
+
+| Current Node File | C# Target | Responsibility |
 |---|---|---|
-| `server.js` | `Program.cs` + API endpoints | 注册 API、静态文件、中间件、错误处理 |
-| `db.js` | `AppDb.cs` + Repositories | SQLite 建表、CRUD、查询、CSV 数据来源 |
-| `modbusService.js` | `ModbusService.cs` | RTU 连接、读状态、写程序号、启动、复位、读阶段时间 |
-| `scannerService.js` | `ScannerService.cs` | 串口扫码枪连接、缓存最新扫码、DTR/RTS |
-| `testWorkflowService.js` | `TestWorkflowService.cs` | 测试上下文、扫码规则、测试监控、保存记录 |
-| `public/` | `wwwroot/` | 原样复制 |
+| `server.js` | `Program.cs` and endpoints | API routes, static files, error handling |
+| `db.js` | `AppDb.cs` and repositories | SQLite schema, CRUD, query, export data |
+| `modbusService.js` | `ModbusService.cs` | RTU connection, read status, select program, start, reset |
+| `scannerService.js` | `ScannerService.cs` | Scanner serial port, latest scan, DTR/RTS |
+| `testWorkflowService.js` | `TestWorkflowService.cs` | Scan rules, active test flow, save records |
+| `public/` | `wwwroot/` | Static frontend files |
 
-## 5. API 对照表
+## 5. Required API Routes
 
-C# 必须实现以下 API，并保持响应字段兼容。
+The C# backend must implement these routes with compatible JSON.
 
-| 方法 | 路径 | 用途 |
+| Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/health` | 健康检查 |
-| `GET` | `/api/config/ateq` | 获取仪器通讯配置 |
-| `POST` | `/api/config/ateq` | 保存仪器通讯配置并重连 |
-| `GET` | `/api/config/scanner` | 获取扫码枪通讯配置 |
-| `POST` | `/api/config/scanner` | 保存扫码枪通讯配置并重连 |
-| `GET` | `/api/settings/products` | 获取产品型号配置 |
-| `POST` | `/api/settings/products` | 保存产品型号配置 |
-| `GET` | `/api/settings/operators` | 获取操作员配置 |
-| `POST` | `/api/settings/operators` | 保存操作员配置 |
-| `GET` | `/api/scanner/latest` | 获取扫码枪连接状态和最新扫码 |
-| `GET` | `/api/scanner/debug` | 获取扫码枪调试信息 |
-| `POST` | `/api/scanner/debug/line-signals` | 设置 DTR/RTS 调试 |
-| `GET` | `/api/status` | 获取实时仪器状态 |
-| `GET` | `/api/program-timings?programNumber=1` | 读取程序阶段时间 |
-| `GET` | `/api/test/active` | 获取当前测试流程状态 |
-| `POST` | `/api/test/context` | 同步当前选择产品和程序号 |
-| `POST` | `/api/start` | 软件启动测试 |
-| `POST` | `/api/reset` | 复位/停止测试 |
-| `GET` | `/api/tests/latest` | 最近测试记录 |
-| `GET` | `/api/tests/query` | 条件查询测试记录 |
-| `GET` | `/api/tests/export.csv` | 导出 CSV |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/config/ateq` | Get instrument serial config |
+| `POST` | `/api/config/ateq` | Save instrument config and reconnect |
+| `GET` | `/api/config/scanner` | Get scanner serial config |
+| `POST` | `/api/config/scanner` | Save scanner config and reconnect |
+| `GET` | `/api/settings/products` | List product profiles |
+| `POST` | `/api/settings/products` | Save product profiles |
+| `GET` | `/api/settings/operators` | List operators |
+| `POST` | `/api/settings/operators` | Save operators |
+| `GET` | `/api/scanner/latest` | Latest scanner state and scan |
+| `GET` | `/api/scanner/debug` | Scanner debug state |
+| `POST` | `/api/scanner/debug/line-signals` | Set scanner DTR/RTS |
+| `GET` | `/api/status` | Realtime instrument status |
+| `GET` | `/api/program-timings` | Read program timing parameters |
+| `GET` | `/api/test/active` | Current active test state |
+| `POST` | `/api/test/context` | Sync selected product context |
+| `POST` | `/api/start` | Start test from software |
+| `POST` | `/api/reset` | Reset or stop test |
+| `GET` | `/api/tests/latest` | Latest test records |
+| `GET` | `/api/tests/query` | Query test records |
+| `GET` | `/api/tests/export.csv` | Export records as CSV |
 
-## 6. 关键 DTO 定义
+## 6. Important Request Validation
+
+### Communication Config
+
+Fields:
+
+- `comPort`: required string
+- `baudrate`: positive integer
+- `dataBits`: integer 5 to 8
+- `parity`: `none`, `even`, `mark`, `odd`, `space`
+- `stopBits`: 1 to 2
+- `timeoutMs`: optional, 100 to 5000
+- `pollIntervalMs`: optional, 50 to 2000
+- `dtr`: optional boolean
+- `rts`: optional boolean
+- `enabled`: required boolean
+- `slaveId`: required for instrument config, 1 to 255
+
+### Product Profiles
+
+Fields:
+
+- `productModel`: required string
+- `ateqProgramNo`: integer 1 to 255
+- `qrKeyword`: required string
+- `isActive`: optional boolean
+- `scanConfirmEnabled`: optional boolean
+- `scanMatchEnabled`: optional boolean
+- `scanAutoStartEnabled`: optional boolean
+
+### Start Request
+
+Fields:
+
+- `productModel`: optional string
+- `operatorName`: optional string
+- `qrCode`: optional string
+- `skipProgramSelect`: optional boolean
+- `startMode`: optional, `manual` or `scan`
+
+## 7. Core Models
 
 ### CommConfig
 
@@ -164,8 +220,8 @@ public sealed class ProductProfile
     public string QrKeyword { get; set; } = "";
     public bool IsActive { get; set; } = true;
     public bool ScanConfirmEnabled { get; set; } = true;
-    public bool ScanMatchEnabled { get; set; } = false;
-    public bool ScanAutoStartEnabled { get; set; } = false;
+    public bool ScanMatchEnabled { get; set; }
+    public bool ScanAutoStartEnabled { get; set; }
 }
 ```
 
@@ -189,9 +245,9 @@ public sealed class RealtimeStatus
 }
 ```
 
-## 7. 数据库表
+## 8. SQLite Schema
 
-使用 SQLite。表结构应与当前项目兼容。
+Use this schema to stay compatible with the current backend.
 
 ```sql
 CREATE TABLE IF NOT EXISTS comm_configs (
@@ -265,9 +321,9 @@ CREATE TABLE IF NOT EXISTS test_records (
 );
 ```
 
-## 8. Modbus 迁移重点
+## 9. Modbus Details
 
-当前寄存器定义：
+Current register map:
 
 ```text
 WRITE_PROGRAM   = 0x0200
@@ -280,15 +336,15 @@ RESET_COIL      = 0x0000
 START_COIL      = 0x0001
 ```
 
-C# 实现必须保留这些转换：
+Keep these conversion rules:
 
-- 16 位寄存器需要 byte swap。
-- 32 位数值由 lowWord + highWord 组合。
-- 压力和漏率是 signed 32-bit，缩放 `/1000`。
-- 漏率允许负数。
-- 程序号写入时当前逻辑是 `programNumber - 1` 后 swap16。
+- 16-bit register values need byte swap.
+- 32-bit values are built from `lowWord` and `highWord`.
+- Pressure and leak values are signed 32-bit values scaled by `/1000`.
+- Leak values can be negative.
+- Program select writes `programNumber - 1`, then applies byte swap.
 
-核心函数：
+Core conversion helpers:
 
 ```csharp
 static ushort Swap16(ushort value)
@@ -311,42 +367,42 @@ static double DecodeSignedScaled32(ushort lowWord, ushort highWord)
 }
 ```
 
-单位映射必须包含：
+Important unit map:
 
 ```text
-3000 -> mm3/s
+3000  -> mm3/s
 51000 -> mL/min
 11000 -> Bar
 12000 -> kPa
 ```
 
-注意：当前项目已经确认 `3000` 应显示为 `mm3/s`，不是 `mm3/h`。
+Important: unit code `3000` must be `mm3/s`, not `mm3/h`.
 
-## 9. 扫码枪迁移重点
+## 10. Scanner Behavior
 
-Node 当前行为：
+The C# scanner service must keep these behaviors:
 
-- 串口收到完整扫码后保存到 `scanner_events`。
-- 只保留最近可见扫码。
-- 测试完成保存记录后，清空当前扫码。
-- 如果启用扫码自动启动，扫码后自动调用启动流程。
-- 如果 ATEQ 不在空闲步骤 `65535`，忽略扫码。
+- Read scanner input from serial port.
+- Buffer incoming data until a complete scan is detected.
+- Save accepted scans to `scanner_events`.
+- Keep the latest visible scan in memory.
+- Clear latest scan after a test record is saved.
+- Ignore scans when the instrument is not idle.
+- Auto-start only if the selected product allows scan auto-start.
+- Support DTR and RTS configuration.
 
-C# 建议：
+Suggested implementation:
 
-- `ScannerService` 使用 `SerialPort.DataReceived`。
-- 使用缓冲区拼接数据。
-- 支持 CR/LF 结束符。
-- 保留 `LatestScan`。
-- 保存 `scanner_events` 最近 200 条。
-- 提供 `GetLatestVisibleScan()`。
-- 提供 `ConsumeCurrentScan()`。
+- Use `System.IO.Ports.SerialPort`.
+- Use a private lock for the receive buffer.
+- Treat CR/LF as scan terminators.
+- Keep only recent scanner events in the database.
 
-## 10. 测试流程迁移重点
+## 11. Test Workflow Rules
 
-这是迁移中最重要的模块。
+This is the highest-risk migration area.
 
-必须保留以下状态：
+Keep these internal states:
 
 - `activeRun`
 - `pendingContext`
@@ -356,50 +412,55 @@ C# 建议：
 - `observeInFlight`
 - `lastRejectedObservedRunAt`
 
-必须保留以下规则：
+Required behavior:
 
-1. 页面选择型号后，`POST /api/test/context` 立即选择仪器程序号。
-2. 扫码自动启动时，优先使用页面已选择型号，不允许二维码全局匹配覆盖当前型号。
-3. 第一次测试结束后，不能丢失当前选择型号，第二次扫码仍要用选中的型号。
-4. 测试完成后保存记录并清空扫码结果。
-5. 如果物理按键启动，但没有扫码或扫码不匹配，要立即发送复位/停止指令。
-6. 如果轮询错过步骤 4，只要发现步骤在 `4..100`，也要恢复监控并保存记录。
-7. 如果等待步骤 4 的上下文超过 8 秒并且仪器已空闲，可以释放 stale context。
+1. `POST /api/test/context` selects the instrument program immediately.
+2. Scan auto-start must prefer the selected product context.
+3. A QR code must not override the selected product and force program 1.
+4. After the first test finishes, the selected product context must remain for the next scan.
+5. After a test record is saved, clear the scanner result.
+6. If physical-button start violates scan rules, call reset immediately.
+7. If polling misses the step 4 edge, recover monitoring when step is between `4` and `100`.
+8. Release stale armed context after 8 seconds only when safe.
 
-物理按键启动拦截逻辑：
+Physical-button rejection logic:
 
 ```text
-observeTelemetry(status)
-  if status.stepCode just entered 4 OR status.stepCode is between 4 and 100:
-    resolveObservedContext(status)
+ObserveTelemetry(status):
+  if status enters step 4 OR status is already in active step 4..100:
+    ResolveObservedContext(status)
       if product requires scan and no scan:
-        throw rejected
+        reject
       if product requires keyword match and QR mismatch:
-        throw rejected
+        reject
     if rejected:
-      resetDevice()
-      do not save record
+      ResetDevice()
+      do not save a test record
 ```
 
-## 11. 后台服务设计
+Add a 2-second throttle around automatic reset to avoid repeatedly sending reset while polling.
 
-建议两个后台服务：
+## 12. Background Services
 
 ### AteqObserverService
 
-- 每 `500ms` 读取一次实时状态。
-- 调用 `TestWorkflowService.ObserveTelemetry(status)`。
-- 如果 Modbus 离线，只记录日志，不让服务崩溃。
+- Runs every `500ms`.
+- Calls `ModbusService.ReadRealtimeStatus()`.
+- Calls `TestWorkflowService.ObserveTelemetry(status)`.
+- Logs Modbus errors without crashing the app.
 
 ### ScannerService
 
-- 配置保存后重连串口。
-- 串口收到扫码后调用 `HandleScannerInput`。
-- `HandleScannerInput` 读取 ATEQ 状态，只有 step `65535` 时接受扫码。
+- Opens scanner serial port when config is enabled.
+- Reconnects after config changes.
+- Handles DTR/RTS line signals.
+- Calls scan handler after receiving a complete scan.
 
-## 12. ASP.NET Core Program.cs 骨架
+## 13. Program.cs Skeleton
 
 ```csharp
+using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<AppDb>();
@@ -423,73 +484,83 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/api/health", () => new { success = true, message = "backend alive" });
+app.MapGet("/api/health", () => new
+{
+    success = true,
+    message = "backend alive"
+});
 
-// Add all API mappings here.
+// Add all API endpoints here.
 
 app.Run("http://0.0.0.0:3000");
 ```
 
-## 13. 迁移顺序
+## 14. Recommended Migration Order
 
-推荐按以下顺序迁移，不要一口气全写完。
+Do not migrate everything at once. Use this order:
 
-1. 创建 ASP.NET Core 项目，复制 `public/` 到 `wwwroot/`。
-2. 实现 `/api/health`，确认页面能打开。
-3. 实现 SQLite 建表和配置读写。
-4. 实现 `/api/settings/products` 和 `/api/settings/operators`。
-5. 实现 `/api/config/ateq` 和 `/api/config/scanner`。
-6. 实现 `ModbusService.ReadRealtimeStatus()` 和 `/api/status`。
-7. 实现程序号选择、启动、复位。
-8. 实现 `ScannerService` 和 `/api/scanner/latest`。
-9. 实现 `TestWorkflowService`。
-10. 实现测试记录保存、查询、导出。
-11. 做现场联调。
+1. Create ASP.NET Core project.
+2. Copy `public/` into `wwwroot/`.
+3. Implement `/api/health`.
+4. Implement SQLite schema and repositories.
+5. Implement product and operator settings APIs.
+6. Implement communication config APIs.
+7. Implement Modbus connect and `/api/status`.
+8. Implement program select, start, and reset.
+9. Implement scanner service and `/api/scanner/latest`.
+10. Implement test workflow service.
+11. Implement test record save, latest records, query, and CSV export.
+12. Run field validation on real hardware.
 
-## 14. 验收清单
+## 15. Acceptance Checklist
 
-新 C# 项目完成后，至少验证这些场景：
+The migration is acceptable only after these pass:
 
-- 页面能打开 `/`、`/settings.html`、`/comm-config.html`、`/query.html`。
-- 保存通讯配置后仪器在线。
-- 保存扫码枪配置后扫码枪在线。
-- 切换产品型号后，仪器程序号同步变化。
-- 型号 1/2/3 连续扫码启动时，第二次不会跳回程序 1。
-- 扫码关键字不匹配时报警，不启动。
-- 物理按键启动但未扫码时，仪器立即停止。
-- 物理按键启动但扫码不匹配时，仪器立即停止。
-- 测试完成后保存记录。
-- 测试完成后扫码结果清空。
-- 漏率趋势允许负数。
-- 单位 `mm3/s` 显示正确。
-- Light/System/Dark 外观可切换，Light 模式白底黑字清晰。
-- 新电脑首次运行时自动创建 `data/`。
+- `/`, `/settings.html`, `/comm-config.html`, and `/query.html` open correctly.
+- Instrument config can be saved.
+- Scanner config can be saved.
+- Instrument online status is correct.
+- Scanner online status is correct.
+- Selecting product 1, 2, or 3 changes the instrument program.
+- Scan auto-start uses the selected product, not global QR matching.
+- Second scan after first test does not jump back to program 1.
+- QR mismatch blocks start.
+- Physical-button start without required scan immediately resets/stops the instrument.
+- Physical-button start with mismatched scan immediately resets/stops the instrument.
+- Test records are saved after completion.
+- Scanner result clears after completion.
+- Leak trend supports negative values.
+- Unit `mm3/s` displays correctly.
+- Light/System/Dark appearance works.
+- Light mode uses white background and readable dark text.
+- A new computer can start with a fresh `data/` folder.
 
-## 15. 不建议迁移的内容
+## 16. Do Not Copy These Into the C# Project
 
-不要照搬：
+Do not copy:
 
 - `node_modules/`
 - `runtime18/`
 - `data/ateq.db`
 - `data/runtime-store.json`
-- 日志文件
-- 临时测试请求 JSON
+- log files
+- temporary test JSON files
 
-如果要迁移旧记录，可以单独写一次性导入工具，把旧 SQLite 或 JSON 数据导入新 C# SQLite。
+If old data must be migrated, write a one-time import tool after the C# schema is stable.
 
-## 16. 风险点
+## 17. Main Risks
 
-- Modbus 寄存器字节序必须严格对齐，否则压力、漏率、单位、程序号都会错。
-- 串口事件是多线程回调，必须加锁保护扫码缓冲区和最新扫码。
-- 测试流程不能并发启动，`TestWorkflowService` 里需要 `lock` 或 `SemaphoreSlim`。
-- SQLite 写入需要串行化，避免测试完成和扫码保存同时写库冲突。
-- 物理按键启动拦截不能无限发 reset，需要保留 2 秒节流。
-- C# JSON 默认 PascalCase，要配置 camelCase，否则前端字段对不上。
+- Modbus byte order mistakes will break program number, pressure, leak, and unit decoding.
+- Serial port callbacks are multi-threaded; protect buffers with locks.
+- Workflow start and observe logic must be serialized with `lock` or `SemaphoreSlim`.
+- SQLite writes should be serialized.
+- Automatic reset after physical-button rejection needs throttling.
+- JSON must use camelCase or the existing frontend will break.
 
-## 17. 推荐完成标准
+## 18. Done Definition
 
-C# 迁移完成后，如果以下两条成立，可以认为后端替换成功：
+The C# migration is done when:
 
-- 不修改当前前端页面，所有功能都能正常使用。
-- 与 Node 版本相比，API 响应字段和业务行为一致。
+- The current frontend works without route or field changes.
+- All API responses are compatible with the Node version.
+- Real hardware tests pass for software start, scan start, and physical-button start.
