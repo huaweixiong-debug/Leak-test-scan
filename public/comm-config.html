@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通讯配置</title>
+<script src="/appearance.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<style>
+  :root{
+    --bg:#09131d;
+    --panel:#102131;
+    --border:#1f3a52;
+    --border-strong:#29506f;
+    --text:#ecf4fb;
+    --muted:#84a0b7;
+    --accent:#24a9d7;
+    --good:#34c67a;
+    --bad:#ff5a5a;
+    --shadow:0 12px 30px rgba(0,0,0,.22);
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at top left, rgba(34,94,138,.22), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #08131d 100%);
+    color:var(--text);
+    font-family:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+  }
+
+  .page{
+    max-width:1260px;
+    margin:0 auto;
+    padding:14px;
+    display:grid;
+    gap:12px;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, rgba(17,34,50,.96) 0%, rgba(13,28,42,.98) 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    min-width:0;
+  }
+
+  .header{
+    padding:16px 18px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    flex-wrap:wrap;
+  }
+
+  .title h1{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+  }
+
+  .title p{
+    margin:4px 0 0;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .links{
+    margin-left:auto;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .link{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:12px;
+  }
+
+  .link:hover{
+    color:#d5f3ff;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+  }
+
+  .section{
+    padding:16px 18px 18px;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+
+  .section-head h2{
+    margin:0;
+    font-size:15px;
+    color:var(--accent);
+  }
+
+  .section-meta{
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+
+  .status-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    height:34px;
+    padding:0 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(5,17,27,.86);
+    font-size:12px;
+    font-weight:700;
+  }
+
+  .status-chip .dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+  }
+
+  .status-chip.online .dot{
+    background:var(--good);
+    box-shadow:0 0 10px rgba(52,198,122,.7);
+  }
+
+  .status-chip.offline .dot{
+    background:var(--bad);
+    box-shadow:0 0 10px rgba(255,90,90,.6);
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:12px;
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .field label{
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .input,
+  .select{
+    width:100%;
+    height:40px;
+    padding:0 12px;
+    border-radius:12px;
+    border:1px solid var(--border-strong);
+    background:#07121c;
+    color:var(--text);
+    font-size:13px;
+    outline:none;
+  }
+
+  .input.mono{
+    font-family:Consolas,"SFMono-Regular",monospace;
+  }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    height:40px;
+    padding:0 18px;
+    border:none;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+
+  .btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+  }
+
+  .btn:active:not(:disabled){
+    transform:translateY(1px);
+  }
+
+  .btn.primary{
+    color:#fff;
+    background:linear-gradient(180deg, #2fb6e1 0%, #1e9fc9 100%);
+  }
+
+  .btn.secondary{
+    color:var(--text);
+    background:transparent;
+    border:1px solid var(--border-strong);
+  }
+
+  .preset{
+    padding:14px 16px;
+    border-radius:16px;
+    border:1px dashed rgba(41,80,111,.8);
+    background:rgba(7,17,27,.32);
+    margin-top:14px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    max-width:min(720px, calc(100vw - 40px));
+    padding:12px 18px;
+    border-radius:14px;
+    font-size:13px;
+    box-shadow:0 16px 30px rgba(0,0,0,.28);
+    display:none;
+    z-index:20;
+  }
+
+  .toast.ok{
+    display:block;
+    border:1px solid rgba(52,198,122,.35);
+    background:rgba(15,57,35,.94);
+    color:#d8ffe9;
+  }
+
+  .toast.err{
+    display:block;
+    border:1px solid rgba(255,90,90,.35);
+    background:rgba(50,12,18,.94);
+    color:#ffd7d7;
+  }
+
+  @media (max-width: 960px){
+    .layout{
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media (max-width: 720px){
+    .page{
+      padding:10px;
+    }
+
+    .form-grid{
+      grid-template-columns:1fr;
+    }
+
+    .links{
+      margin-left:0;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="panel header">
+      <div class="title">
+        <h1>通讯配置</h1>
+        <p>配置仪器与扫码枪串口参数。保存后立即对后端生效。</p>
+      </div>
+      <div class="links">
+        <a class="link" href="/">主测试页</a>
+        <a class="link" href="/query.html">数据查询</a>
+        <a class="link" href="/settings.html">系统设置</a>
+      </div>
+    </header>
+
+    <div class="layout">
+      <section class="panel section">
+        <div class="section-head">
+          <div>
+            <h2>仪器</h2>
+            <div class="section-meta">当前现场参数建议：COM7 / 9600 / 8E1 / Slave ID 255</div>
+          </div>
+          <div class="status-chip offline" id="ateq-state-chip">
+            <span class="dot"></span>
+            <span id="ateq-state-text">离线</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="ateq-com">COM 端口</label>
+            <input class="input mono" id="ateq-com" type="text">
+          </div>
+          <div class="field">
+            <label for="ateq-slave">Slave ID</label>
+            <input class="input mono" id="ateq-slave" type="number" min="1" max="255">
+          </div>
+          <div class="field">
+            <label for="ateq-baud">波特率</label>
+            <select class="select" id="ateq-baud">
+              <option value="9600">9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="115200">115200</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ateq-data">数据位</label>
+            <select class="select" id="ateq-data">
+              <option value="8">8</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ateq-parity">校验位</label>
+            <select class="select" id="ateq-parity">
+              <option value="none">None</option>
+              <option value="even">Even</option>
+              <option value="odd">Odd</option>
+              <option value="mark">Mark</option>
+              <option value="space">Space</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ateq-stop">停止位</label>
+            <select class="select" id="ateq-stop">
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ateq-timeout">超时(ms)</label>
+            <input class="input mono" id="ateq-timeout" type="number" min="100" max="5000">
+          </div>
+          <div class="field">
+            <label for="ateq-poll">轮询间隔(ms)</label>
+            <input class="input mono" id="ateq-poll" type="number" min="50" max="2000">
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn secondary" id="btn-fill-ateq" type="button">填入现场值</button>
+          <button class="btn primary" id="btn-save-ateq" type="button">保存配置</button>
+        </div>
+
+        <div class="preset">
+          说明：仪器目前是否在线，取决于 `/api/status` 实时通讯结果。若保存后仍显示离线，优先排查仪器本体、串口占用或现场接线。
+        </div>
+      </section>
+
+      <section class="panel section">
+        <div class="section-head">
+          <div>
+            <h2>扫码枪</h2>
+            <div class="section-meta">当前现场参数建议：COM1 / 115200 / 8N1</div>
+          </div>
+          <div class="status-chip offline" id="scanner-state-chip">
+            <span class="dot"></span>
+            <span id="scanner-state-text">离线</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="scanner-com">COM 端口</label>
+            <input class="input mono" id="scanner-com" type="text">
+          </div>
+          <div class="field">
+            <label for="scanner-baud">波特率</label>
+            <select class="select" id="scanner-baud">
+              <option value="9600">9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="115200">115200</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scanner-data">数据位</label>
+            <select class="select" id="scanner-data">
+              <option value="8">8</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scanner-parity">校验位</label>
+            <select class="select" id="scanner-parity">
+              <option value="none">None</option>
+              <option value="even">Even</option>
+              <option value="odd">Odd</option>
+              <option value="mark">Mark</option>
+              <option value="space">Space</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scanner-stop">停止位</label>
+            <select class="select" id="scanner-stop">
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scanner-timeout">超时(ms)</label>
+            <input class="input mono" id="scanner-timeout" type="number" min="100" max="5000">
+          </div>
+          <div class="field">
+            <label for="scanner-dtr">DTR</label>
+            <select class="select" id="scanner-dtr">
+              <option value="true">ON</option>
+              <option value="false">OFF</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="scanner-rts">RTS</label>
+            <select class="select" id="scanner-rts">
+              <option value="true">ON</option>
+              <option value="false">OFF</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn secondary" id="btn-fill-scanner" type="button">填入现场值</button>
+          <button class="btn primary" id="btn-save-scanner" type="button">保存扫码枪配置</button>
+        </div>
+
+        <div class="preset">
+          扫码枪状态取自 `/api/scanner/latest` 的 `connected` 字段。若已知扫码枪参数变化，请先在此保存后再回主测试页验证扫码。
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const defaults = {
+    ateq: {
+      comPort: 'COM7',
+      slaveId: 255,
+      baudrate: 9600,
+      dataBits: 8,
+      parity: 'even',
+      stopBits: 1,
+      timeoutMs: 5000,
+      pollIntervalMs: 100,
+      enabled: true
+    },
+    scanner: {
+      comPort: 'COM1',
+      baudrate: 115200,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 1,
+      timeoutMs: 5000,
+      dtr: true,
+      rts: false,
+      enabled: true
+    }
+  };
+
+  const dom = {
+    ateqCom: document.getElementById('ateq-com'),
+    ateqSlave: document.getElementById('ateq-slave'),
+    ateqBaud: document.getElementById('ateq-baud'),
+    ateqData: document.getElementById('ateq-data'),
+    ateqParity: document.getElementById('ateq-parity'),
+    ateqStop: document.getElementById('ateq-stop'),
+    ateqTimeout: document.getElementById('ateq-timeout'),
+    ateqPoll: document.getElementById('ateq-poll'),
+    ateqChip: document.getElementById('ateq-state-chip'),
+    ateqText: document.getElementById('ateq-state-text'),
+    scannerCom: document.getElementById('scanner-com'),
+    scannerBaud: document.getElementById('scanner-baud'),
+    scannerData: document.getElementById('scanner-data'),
+    scannerParity: document.getElementById('scanner-parity'),
+    scannerStop: document.getElementById('scanner-stop'),
+    scannerTimeout: document.getElementById('scanner-timeout'),
+    scannerDtr: document.getElementById('scanner-dtr'),
+    scannerRts: document.getElementById('scanner-rts'),
+    scannerChip: document.getElementById('scanner-state-chip'),
+    scannerText: document.getElementById('scanner-state-text'),
+    btnFillAteq: document.getElementById('btn-fill-ateq'),
+    btnSaveAteq: document.getElementById('btn-save-ateq'),
+    btnFillScanner: document.getElementById('btn-fill-scanner'),
+    btnSaveScanner: document.getElementById('btn-save-scanner'),
+    toast: document.getElementById('toast')
+  };
+
+  function showToast(type, message) {
+    dom.toast.className = `toast ${type}`;
+    dom.toast.textContent = message;
+    clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => {
+      dom.toast.className = 'toast';
+      dom.toast.style.display = 'none';
+    }, 4200);
+  }
+
+  async function api(url, options) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      ...options
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const validationMessage = payload && Array.isArray(payload.errors) && payload.errors.length
+        ? payload.errors.map((item) => `${item.field}: ${item.message}`).join('；')
+        : null;
+      throw new Error(validationMessage || (payload && payload.message) || `${url} ${response.status}`);
+    }
+
+    return payload;
+  }
+
+  function applyAteqConfig(config) {
+    const safe = { ...defaults.ateq, ...(config || {}) };
+    dom.ateqCom.value = safe.comPort || '';
+    dom.ateqSlave.value = safe.slaveId || 255;
+    dom.ateqBaud.value = String(safe.baudrate || 9600);
+    dom.ateqData.value = String(safe.dataBits || 8);
+    dom.ateqParity.value = safe.parity || 'even';
+    dom.ateqStop.value = String(safe.stopBits || 1);
+    dom.ateqTimeout.value = safe.timeoutMs || 5000;
+    dom.ateqPoll.value = safe.pollIntervalMs || 100;
+  }
+
+  function applyScannerConfig(config) {
+    const safe = { ...defaults.scanner, ...(config || {}) };
+    dom.scannerCom.value = safe.comPort || '';
+    dom.scannerBaud.value = String(safe.baudrate || 115200);
+    dom.scannerData.value = String(safe.dataBits || 8);
+    dom.scannerParity.value = safe.parity || 'none';
+    dom.scannerStop.value = String(safe.stopBits || 1);
+    dom.scannerTimeout.value = safe.timeoutMs || 5000;
+    dom.scannerDtr.value = safe.dtr === false ? 'false' : 'true';
+    dom.scannerRts.value = safe.rts === true ? 'true' : 'false';
+  }
+
+  function setChip(chip, textEl, connected) {
+    chip.className = `status-chip ${connected ? 'online' : 'offline'}`;
+    textEl.textContent = connected ? '在线' : '离线';
+  }
+
+  function buildAteqPayload() {
+    return {
+      comPort: String(dom.ateqCom.value || '').trim().toUpperCase(),
+      slaveId: Number(dom.ateqSlave.value || 255),
+      baudrate: Number(dom.ateqBaud.value || 9600),
+      dataBits: Number(dom.ateqData.value || 8),
+      parity: String(dom.ateqParity.value || 'even'),
+      stopBits: Number(dom.ateqStop.value || 1),
+      timeoutMs: Number(dom.ateqTimeout.value || 5000),
+      pollIntervalMs: Number(dom.ateqPoll.value || 100),
+      enabled: true
+    };
+  }
+
+  function buildScannerPayload() {
+    return {
+      comPort: String(dom.scannerCom.value || '').trim().toUpperCase(),
+      baudrate: Number(dom.scannerBaud.value || 115200),
+      dataBits: Number(dom.scannerData.value || 8),
+      parity: String(dom.scannerParity.value || 'none'),
+      stopBits: Number(dom.scannerStop.value || 1),
+      timeoutMs: Number(dom.scannerTimeout.value || 5000),
+      dtr: dom.scannerDtr.value === 'true',
+      rts: dom.scannerRts.value === 'true',
+      enabled: true
+    };
+  }
+
+  async function loadConfigs() {
+    const [ateqResponse, scannerResponse] = await Promise.all([
+      api('/api/config/ateq'),
+      api('/api/config/scanner')
+    ]);
+
+    applyAteqConfig(ateqResponse.config);
+    applyScannerConfig(scannerResponse.config);
+  }
+
+  async function pollStates() {
+    try {
+      const [statusResponse, scannerResponse] = await Promise.allSettled([
+        api('/api/status'),
+        api('/api/scanner/latest')
+      ]);
+
+      const ateqConnected = statusResponse.status === 'fulfilled' && Boolean(statusResponse.value.connected);
+      const scannerConnected = scannerResponse.status === 'fulfilled' && Boolean(scannerResponse.value.connected);
+
+      setChip(dom.ateqChip, dom.ateqText, ateqConnected);
+      setChip(dom.scannerChip, dom.scannerText, scannerConnected);
+    } catch (error) {
+      setChip(dom.ateqChip, dom.ateqText, false);
+      setChip(dom.scannerChip, dom.scannerText, false);
+    }
+  }
+
+  async function saveAteq() {
+    dom.btnSaveAteq.disabled = true;
+    try {
+      const response = await api('/api/config/ateq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildAteqPayload())
+      });
+      applyAteqConfig(response.config);
+      setChip(dom.ateqChip, dom.ateqText, response.state && response.state.connected);
+      showToast('ok', '通讯配置已保存。');
+    } catch (error) {
+      showToast('err', `保存配置失败：${error.message}`);
+    } finally {
+      dom.btnSaveAteq.disabled = false;
+    }
+  }
+
+  async function saveScanner() {
+    dom.btnSaveScanner.disabled = true;
+    try {
+      const response = await api('/api/config/scanner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildScannerPayload())
+      });
+      applyScannerConfig(response.config);
+      setChip(dom.scannerChip, dom.scannerText, response.state && response.state.connected);
+      showToast('ok', '扫码枪通讯配置已保存。');
+    } catch (error) {
+      showToast('err', `保存扫码枪配置失败：${error.message}`);
+    } finally {
+      dom.btnSaveScanner.disabled = false;
+    }
+  }
+
+  dom.btnFillAteq.addEventListener('click', () => {
+    applyAteqConfig(defaults.ateq);
+  });
+
+  dom.btnFillScanner.addEventListener('click', () => {
+    applyScannerConfig(defaults.scanner);
+  });
+
+  dom.btnSaveAteq.addEventListener('click', saveAteq);
+  dom.btnSaveScanner.addEventListener('click', saveScanner);
+
+  async function init() {
+    try {
+      await loadConfigs();
+      await pollStates();
+      window.setInterval(pollStates, 3000);
+    } catch (error) {
+      showToast('err', `初始化通讯配置页失败：${error.message}`);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

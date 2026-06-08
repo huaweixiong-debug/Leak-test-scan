@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据查询</title>
+<script src="/appearance.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<style>
+  :root {
+    --bg: #09131d;
+    --panel: #102131;
+    --panel-2: #0b1824;
+    --border: #1f3a52;
+    --border-strong: #29506f;
+    --text: #ecf4fb;
+    --muted: #84a0b7;
+    --accent: #24a9d7;
+    --accent-soft: rgba(36, 169, 215, 0.18);
+    --good: #34c67a;
+    --good-soft: rgba(52, 198, 122, 0.12);
+    --bad: #ff5a5a;
+    --bad-soft: rgba(255, 90, 90, 0.12);
+    --warn: #d8dde5;
+    --shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top left, rgba(34, 94, 138, 0.22), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #08131d 100%);
+    color: var(--text);
+    font-family: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  }
+
+  body {
+    padding: 10px;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 1260px;
+    height: calc(100vh - 20px);
+    margin: 0 auto;
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .panel {
+    min-width: 0;
+    background: linear-gradient(180deg, rgba(17, 34, 50, 0.96) 0%, rgba(13, 28, 42, 0.98) 100%);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .title-block h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+
+  .title-block p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .nav-link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    transition: color 0.15s ease, text-shadow 0.15s ease;
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    color: #d5f3ff;
+    text-shadow: 0 0 12px rgba(36, 169, 215, 0.32);
+  }
+
+  .header-side {
+    text-align: right;
+  }
+
+  .header-side .meta-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .header-side .badge {
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    background: rgba(5, 17, 27, 0.86);
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .badge .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(36, 169, 215, 0.7);
+  }
+
+  .section {
+    padding: 14px 16px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .section-head h2 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0.2px;
+  }
+
+  .section-meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 14px;
+  }
+
+  .field {
+    min-width: 0;
+  }
+
+  .field.span-2 {
+    grid-column: span 2;
+  }
+
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .input,
+  .select {
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 13px;
+    border: 1px solid var(--border-strong);
+    background: #07121c;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+
+  .checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .checkbox-line input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+  }
+
+  .actions {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .actions-left,
+  .actions-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    min-width: 120px;
+    height: 40px;
+    padding: 0 18px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #1fb0de 0%, #1d91c4 100%);
+    color: #f4fbff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(31, 176, 222, 0.22);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .btn.secondary {
+    background: rgba(8, 20, 31, 0.92);
+    color: var(--text);
+    box-shadow: none;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(9, 21, 31, 0.92) 0%, rgba(10, 24, 35, 0.98) 100%);
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+  }
+
+  .records {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .table-wrap {
+    min-height: 0;
+    overflow: auto;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: rgba(8, 20, 31, 0.9);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1060px;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: rgba(11, 26, 40, 0.98);
+  }
+
+  th,
+  td {
+    padding: 12px 12px;
+    border-bottom: 1px solid rgba(37, 70, 96, 0.7);
+    text-align: left;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  th {
+    color: #93c9e4;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  td {
+    color: var(--text);
+  }
+
+  tbody tr {
+    cursor: pointer;
+    transition: background 0.14s ease;
+  }
+
+  tbody tr:hover {
+    background: rgba(36, 169, 215, 0.08);
+  }
+
+  tbody tr.selected {
+    background: rgba(36, 169, 215, 0.14);
+  }
+
+  .ok-text {
+    color: var(--good);
+    font-weight: 700;
+  }
+
+  .ng-text {
+    color: var(--bad);
+    font-weight: 700;
+  }
+
+  .unknown-text {
+    color: var(--warn);
+    font-weight: 700;
+  }
+
+  .reason-cell {
+    max-width: 220px;
+    color: #c8d8e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pager {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pager-meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .pager-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .empty-row {
+    text-align: center;
+    color: var(--muted);
+    padding: 28px 12px;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+
+  .toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    display: none;
+    max-width: 360px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 90, 90, 0.3);
+    background: rgba(15, 29, 41, 0.96);
+    color: #ffd7d7;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+    z-index: 30;
+  }
+
+  .detail-mask {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(3, 9, 15, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+  }
+
+  .detail-mask.open {
+    display: flex;
+  }
+
+  .detail-dialog {
+    width: min(1120px, calc(100vw - 36px));
+    max-height: calc(100vh - 36px);
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, rgba(15, 30, 44, 0.98) 0%, rgba(10, 21, 33, 1) 100%);
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.32);
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .detail-head h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .detail-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .detail-close {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: rgba(8, 20, 31, 0.92);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .detail-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .detail-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 800;
+    border: 1px solid var(--border);
+    background: rgba(7, 20, 30, 0.92);
+  }
+
+  .detail-result.ok {
+    color: var(--good);
+    border-color: rgba(52, 198, 122, 0.4);
+    background: var(--good-soft);
+  }
+
+  .detail-result.ng {
+    color: var(--bad);
+    border-color: rgba(255, 90, 90, 0.4);
+    background: var(--bad-soft);
+  }
+
+  .detail-result.unknown {
+    color: var(--warn);
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .detail-card {
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: rgba(8, 19, 29, 0.92);
+  }
+
+  .detail-card.span-2 {
+    grid-column: span 2;
+  }
+
+  .detail-card-label {
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .detail-card-value {
+    font-size: 18px;
+    font-weight: 800;
+    word-break: break-word;
+  }
+
+  .detail-card-value.small {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .detail-chart-grid {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .detail-chart-card {
+    min-height: 0;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: rgba(8, 19, 29, 0.92);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .detail-chart-card h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #93c9e4;
+  }
+
+  .detail-canvas-wrap {
+    min-height: 240px;
+    border-radius: 14px;
+    border: 1px solid rgba(31, 58, 82, 0.72);
+    background: linear-gradient(180deg, rgba(4, 12, 20, 0.96) 0%, rgba(6, 15, 23, 0.98) 100%);
+    overflow: hidden;
+  }
+
+  .detail-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  @media (max-width: 1160px) {
+    .app-shell {
+      grid-template-rows: auto auto auto minmax(0, 1fr);
+    }
+
+    .filter-grid,
+    .summary-grid,
+    .detail-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-chart-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 840px) {
+    body {
+      overflow: auto;
+    }
+
+    .app-shell {
+      height: auto;
+      min-height: calc(100vh - 20px);
+    }
+
+    .header,
+    .actions,
+    .pager {
+      align-items: flex-start;
+    }
+
+    .filter-grid,
+    .summary-grid,
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .field.span-2,
+    .detail-card.span-2 {
+      grid-column: span 1;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="panel header">
+      <div class="title-block">
+        <h1>数据查询</h1>
+        <p>查询、筛选、导出测试记录，并支持查看单次测试详情与曲线。</p>
+        <div class="nav-links">
+          <a class="nav-link" href="/">主测试页</a>
+          <a class="nav-link active" href="/query.html">数据查询</a>
+          <a class="nav-link" href="/settings.html">系统设置</a>
+          <a class="nav-link" href="/comm-config.html">通讯配置</a>
+        </div>
+      </div>
+      <div class="header-side">
+        <div class="meta-line" id="filter-meta">默认查询今天的测试记录</div>
+        <div class="badge">
+          <span class="dot"></span>
+          <span>查询页已就绪</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel section">
+      <div class="section-head">
+        <h2>筛选条件</h2>
+        <div class="section-meta">支持时间、产品、结果、二维码、失败原因组合筛选</div>
+      </div>
+
+      <div class="filter-grid">
+        <div class="field">
+          <label for="start-time">开始时间</label>
+          <input class="input" id="start-time" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="end-time">结束时间</label>
+          <input class="input" id="end-time" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="product-model">产品型号</label>
+          <select class="select" id="product-model">
+            <option value="">全部产品</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="result-code">测试结果</label>
+          <select class="select" id="result-code">
+            <option value="ALL">全部</option>
+            <option value="OK">OK</option>
+            <option value="NG">NG</option>
+            <option value="UNKNOWN">UNKNOWN</option>
+          </select>
+        </div>
+
+        <div class="field span-2">
+          <label for="qr-keyword">二维码</label>
+          <input class="input" id="qr-keyword" type="text" placeholder="支持模糊搜索或配合精确匹配">
+        </div>
+        <div class="field">
+          <label for="failure-reason">失败原因</label>
+          <input class="input" id="failure-reason" type="text" placeholder="例如：参考侧、压力异常、校准">
+        </div>
+        <div class="field">
+          <label for="page-size">每页数量</label>
+          <select class="select" id="page-size">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="actions-left">
+          <button class="btn" id="btn-search" type="button">开始查询</button>
+          <button class="btn secondary" id="btn-export" type="button">导出 CSV</button>
+          <button class="btn secondary" id="btn-reset" type="button">重置条件</button>
+          <button class="btn secondary" id="btn-today" type="button">今天</button>
+        </div>
+        <div class="actions-right">
+          <label class="checkbox-line" for="qr-exact">
+            <input id="qr-exact" type="checkbox">
+            <span>二维码精确匹配</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-head">
+        <h2>查询概览</h2>
+        <div class="section-meta">当前页统计基于本次查询返回记录</div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">查询总数</div>
+          <div class="summary-value" id="sum-total">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">当前页</div>
+          <div class="summary-value" id="sum-page">1 / 1</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">当前页 OK 数量</div>
+          <div class="summary-value" id="sum-ok">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">当前页 NG 数量</div>
+          <div class="summary-value" id="sum-ng">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel section records">
+      <div class="section-head">
+        <h2>查询结果</h2>
+        <div class="section-meta" id="records-meta">共 0 条记录</div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>产品</th>
+              <th>二维码</th>
+              <th>压力</th>
+              <th>泄漏量</th>
+              <th>结果</th>
+              <th>失败原因</th>
+              <th>操作员</th>
+              <th>开始时间</th>
+              <th>结束时间</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager-meta" id="pager-meta">当前没有查询结果</div>
+        <div class="pager-actions">
+          <button class="btn secondary" id="btn-prev" type="button">上一页</button>
+          <button class="btn secondary" id="btn-next" type="button">下一页</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="detail-mask" id="detail-mask">
+    <div class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="detail-head">
+        <div>
+          <h3 id="detail-title">测试记录详情</h3>
+          <p id="detail-subtitle">点击表格记录后，这里会显示本次测试的关键字段和曲线。</p>
+        </div>
+        <button class="detail-close" id="detail-close" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <div class="detail-topline">
+        <div class="detail-result unknown" id="detail-result">UNKNOWN</div>
+        <div class="section-meta" id="detail-meta">等待选择记录</div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-card">
+          <div class="detail-card-label">序号</div>
+          <div class="detail-card-value" id="detail-sequence">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">产品型号</div>
+          <div class="detail-card-value" id="detail-product">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">操作员</div>
+          <div class="detail-card-value" id="detail-operator">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">程序</div>
+          <div class="detail-card-value" id="detail-program">-</div>
+        </div>
+
+        <div class="detail-card span-2">
+          <div class="detail-card-label">二维码</div>
+          <div class="detail-card-value small" id="detail-qr">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">启动方式</div>
+          <div class="detail-card-value" id="detail-start-mode">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">样本数</div>
+          <div class="detail-card-value" id="detail-sample-count">-</div>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-card-label">开始时间</div>
+          <div class="detail-card-value small" id="detail-started-at">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">结束时间</div>
+          <div class="detail-card-value small" id="detail-finished-at">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">最终压力</div>
+          <div class="detail-card-value" id="detail-final-pressure">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">最终漏率</div>
+          <div class="detail-card-value" id="detail-final-leak">-</div>
+        </div>
+
+        <div class="detail-card span-2">
+          <div class="detail-card-label">失败原因</div>
+          <div class="detail-card-value small" id="detail-failure-reason">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">错误码</div>
+          <div class="detail-card-value small" id="detail-error-code">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-label">状态字</div>
+          <div class="detail-card-value small" id="detail-status-word">-</div>
+        </div>
+      </div>
+
+      <div class="detail-chart-grid">
+        <section class="detail-chart-card">
+          <h4>压力曲线</h4>
+          <div class="detail-canvas-wrap">
+            <canvas class="detail-canvas" id="detail-pressure-chart"></canvas>
+          </div>
+        </section>
+        <section class="detail-chart-card">
+          <h4>泄漏曲线</h4>
+          <div class="detail-canvas-wrap">
+            <canvas class="detail-canvas" id="detail-leak-chart"></canvas>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const state = {
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    totalPages: 1,
+    records: [],
+    selectedRecordId: null
+  };
+
+  const dom = {
+    startTime: document.getElementById('start-time'),
+    endTime: document.getElementById('end-time'),
+    productModel: document.getElementById('product-model'),
+    resultCode: document.getElementById('result-code'),
+    qrKeyword: document.getElementById('qr-keyword'),
+    failureReason: document.getElementById('failure-reason'),
+    qrExact: document.getElementById('qr-exact'),
+    pageSize: document.getElementById('page-size'),
+    btnSearch: document.getElementById('btn-search'),
+    btnExport: document.getElementById('btn-export'),
+    btnReset: document.getElementById('btn-reset'),
+    btnToday: document.getElementById('btn-today'),
+    btnPrev: document.getElementById('btn-prev'),
+    btnNext: document.getElementById('btn-next'),
+    sumTotal: document.getElementById('sum-total'),
+    sumPage: document.getElementById('sum-page'),
+    sumOk: document.getElementById('sum-ok'),
+    sumNg: document.getElementById('sum-ng'),
+    recordsMeta: document.getElementById('records-meta'),
+    pagerMeta: document.getElementById('pager-meta'),
+    recordsBody: document.getElementById('records-body'),
+    filterMeta: document.getElementById('filter-meta'),
+    toast: document.getElementById('toast'),
+    detailMask: document.getElementById('detail-mask'),
+    detailClose: document.getElementById('detail-close'),
+    detailResult: document.getElementById('detail-result'),
+    detailMeta: document.getElementById('detail-meta'),
+    detailSubtitle: document.getElementById('detail-subtitle'),
+    detailSequence: document.getElementById('detail-sequence'),
+    detailProduct: document.getElementById('detail-product'),
+    detailOperator: document.getElementById('detail-operator'),
+    detailProgram: document.getElementById('detail-program'),
+    detailQr: document.getElementById('detail-qr'),
+    detailStartMode: document.getElementById('detail-start-mode'),
+    detailSampleCount: document.getElementById('detail-sample-count'),
+    detailStartedAt: document.getElementById('detail-started-at'),
+    detailFinishedAt: document.getElementById('detail-finished-at'),
+    detailFinalPressure: document.getElementById('detail-final-pressure'),
+    detailFinalLeak: document.getElementById('detail-final-leak'),
+    detailFailureReason: document.getElementById('detail-failure-reason'),
+    detailErrorCode: document.getElementById('detail-error-code'),
+    detailStatusWord: document.getElementById('detail-status-word'),
+    detailPressureChart: document.getElementById('detail-pressure-chart'),
+    detailLeakChart: document.getElementById('detail-leak-chart')
+  };
+
+  function showToast(message) {
+    dom.toast.textContent = message;
+    dom.toast.style.display = 'block';
+    clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => {
+      dom.toast.style.display = 'none';
+    }, 4200);
+  }
+
+  async function api(url, options) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      ...options
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const validationMessage = payload && Array.isArray(payload.errors) && payload.errors.length
+        ? payload.errors.map((item) => `${item.field}: ${item.message}`).join('；')
+        : null;
+      throw new Error(validationMessage || (payload && payload.message) || `${url} ${response.status}`);
+    }
+
+    return payload;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(3) : '-';
+  }
+
+  function formatValueWithUnit(value, unit) {
+    if (!Number.isFinite(Number(value))) {
+      return '-';
+    }
+    return `${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
+  }
+
+  function formatDateTime(value) {
+    if (!value) {
+      return '-';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '-';
+    }
+    return date.toLocaleString('zh-CN', { hour12: false });
+  }
+
+  function formatStartMode(value) {
+    if (value === 'scan') {
+      return '扫码启动';
+    }
+    if (value === 'manual') {
+      return '手动启动';
+    }
+    return value || '-';
+  }
+
+  function toInputValue(date) {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function fromInputValue(value) {
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return date.toISOString();
+  }
+
+  function setTodayRange() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    dom.startTime.value = toInputValue(start);
+    dom.endTime.value = toInputValue(now);
+    dom.filterMeta.textContent = '默认查询今天的测试记录';
+  }
+
+  function resetFilters() {
+    setTodayRange();
+    dom.productModel.value = '';
+    dom.resultCode.value = 'ALL';
+    dom.qrKeyword.value = '';
+    dom.failureReason.value = '';
+    dom.qrExact.checked = false;
+    dom.pageSize.value = '50';
+    state.page = 1;
+    state.pageSize = 50;
+  }
+
+  function buildQueryParams(page) {
+    const params = new URLSearchParams();
+    const startTime = fromInputValue(dom.startTime.value);
+    const endTime = fromInputValue(dom.endTime.value);
+    const productModel = dom.productModel.value.trim();
+    const resultCode = dom.resultCode.value;
+    const qrCode = dom.qrKeyword.value.trim();
+    const failureReason = dom.failureReason.value.trim();
+    const exact = dom.qrExact.checked;
+    const pageSize = Number(dom.pageSize.value || 50);
+
+    if (startTime) params.set('startTime', startTime);
+    if (endTime) params.set('endTime', endTime);
+    if (productModel) params.set('productModel', productModel);
+    if (resultCode) params.set('resultCode', resultCode);
+    if (qrCode) params.set('qrCode', qrCode);
+    if (failureReason) params.set('failureReason', failureReason);
+    if (exact) params.set('qrExact', 'true');
+    params.set('page', String(page));
+    params.set('pageSize', String(pageSize));
+    return params;
+  }
+
+  function updateSummary() {
+    const okCount = state.records.filter((item) => item.resultCode === 'OK').length;
+    const ngCount = state.records.filter((item) => item.resultCode === 'NG').length;
+    const start = state.total === 0 ? 0 : (state.page - 1) * state.pageSize + 1;
+    const end = Math.min(state.page * state.pageSize, state.total);
+
+    dom.sumTotal.textContent = String(state.total);
+    dom.sumPage.textContent = `${state.page} / ${state.totalPages}`;
+    dom.sumOk.textContent = String(okCount);
+    dom.sumNg.textContent = String(ngCount);
+    dom.recordsMeta.textContent = `共 ${state.total} 条记录`;
+    dom.pagerMeta.textContent = state.total === 0
+      ? '当前没有查询结果'
+      : `显示第 ${start} - ${end} 条，共 ${state.total} 条`;
+    dom.btnPrev.disabled = state.page <= 1;
+    dom.btnNext.disabled = state.page >= state.totalPages;
+  }
+
+  function getRecordById(recordId) {
+    return state.records.find((item) => item.id === recordId) || null;
+  }
+
+  function renderRecords() {
+    if (!state.records.length) {
+      dom.recordsBody.innerHTML = '<tr><td colspan="10" class="empty-row">暂无符合条件的测试记录。</td></tr>';
+      updateSummary();
+      if (state.selectedRecordId) {
+        closeDetail();
+      }
+      return;
+    }
+
+    dom.recordsBody.innerHTML = state.records.map((record) => {
+      const pressureValue = Number.isFinite(Number(record.finalPressure)) ? record.finalPressure : record.testPressure;
+      const resultClass = record.resultCode === 'OK'
+        ? 'ok-text'
+        : record.resultCode === 'NG'
+          ? 'ng-text'
+          : 'unknown-text';
+      const reasonText = record.resultCode === 'NG'
+        ? (record.errorText || record.errorCode || '-')
+        : '-';
+      const selectedClass = record.id === state.selectedRecordId ? ' selected' : '';
+
+      return [
+        `<tr data-record-id="${escapeHtml(record.id)}" class="${selectedClass.trim()}">`,
+        `<td>${escapeHtml(record.sequenceCode || '-')}</td>`,
+        `<td>${escapeHtml(record.productModel || '-')}</td>`,
+        `<td>${escapeHtml(record.qrCode || '-')}</td>`,
+        `<td>${escapeHtml(formatValueWithUnit(pressureValue, record.pressureUnit || ''))}</td>`,
+        `<td>${escapeHtml(formatValueWithUnit(record.finalLeak, record.leakUnit || ''))}</td>`,
+        `<td class="${resultClass}">${escapeHtml(record.resultCode || '-')}</td>`,
+        `<td class="reason-cell" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>`,
+        `<td>${escapeHtml(record.operatorName || '-')}</td>`,
+        `<td>${escapeHtml(formatDateTime(record.startedAt))}</td>`,
+        `<td>${escapeHtml(formatDateTime(record.finishedAt))}</td>`,
+        '</tr>'
+      ].join('');
+    }).join('');
+
+    updateSummary();
+
+    if (state.selectedRecordId) {
+      const selected = getRecordById(state.selectedRecordId);
+      if (selected) {
+        openDetail(selected, true);
+      } else {
+        closeDetail();
+      }
+    }
+  }
+
+  async function loadProducts() {
+    try {
+      const response = await api('/api/settings/products');
+      const products = Array.isArray(response.products)
+        ? response.products.filter((item) => item.isActive !== false)
+        : [];
+      dom.productModel.innerHTML = '<option value="">全部产品</option>';
+      products.forEach((product) => {
+        const option = document.createElement('option');
+        option.value = product.productModel;
+        option.textContent = product.productModel;
+        dom.productModel.appendChild(option);
+      });
+    } catch (error) {
+      showToast(`加载产品列表失败：${error.message}`);
+    }
+  }
+
+  async function runQuery(page) {
+    state.pageSize = Number(dom.pageSize.value || 50);
+    dom.btnSearch.disabled = true;
+    try {
+      const response = await api(`/api/tests/query?${buildQueryParams(page).toString()}`);
+      state.records = Array.isArray(response.records) ? response.records : [];
+      state.total = Number(response.total || 0);
+      state.page = Number(response.page || page || 1);
+      state.pageSize = Number(response.pageSize || state.pageSize);
+      state.totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+      renderRecords();
+    } catch (error) {
+      showToast(`查询失败：${error.message}`);
+    } finally {
+      dom.btnSearch.disabled = false;
+    }
+  }
+
+  function exportCsv() {
+    window.location.href = `/api/tests/export.csv?${buildQueryParams(1).toString()}`;
+  }
+
+  function changePage(nextPage) {
+    const safePage = Math.max(1, Math.min(nextPage, state.totalPages));
+    if (safePage === state.page) {
+      return;
+    }
+    state.page = safePage;
+    runQuery(safePage);
+  }
+
+  function syncCanvasResolution(canvas) {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width * ratio));
+    const height = Math.max(1, Math.round(rect.height * ratio));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const context = canvas.getContext('2d');
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return {
+      context,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  function getDetailChartPalette(color) {
+    if (document.documentElement.dataset.theme === 'light') {
+      const normalizedColor = String(color || '').toLowerCase();
+      return {
+        background: '#ffffff',
+        grid: 'rgba(120, 148, 166, 0.58)',
+        text: '#183244',
+        muted: '#4a6375',
+        line: normalizedColor.includes('3bcf') ? '#11834c' : '#007fae'
+      };
+    }
+
+    return {
+      background: '#07111a',
+      grid: 'rgba(34, 62, 85, 0.9)',
+      text: '#88a8c2',
+      muted: '#6e8ba2',
+      line: color
+    };
+  }
+
+  function drawDetailChart(canvas, samples, key, unit, color) {
+    const { context, width, height } = syncCanvasResolution(canvas);
+    const palette = getDetailChartPalette(color);
+    context.clearRect(0, 0, width, height);
+
+    context.fillStyle = palette.background;
+    context.fillRect(0, 0, width, height);
+
+    const left = 52;
+    const right = 16;
+    const top = 18;
+    const bottom = 28;
+    const plotWidth = Math.max(1, width - left - right);
+    const plotHeight = Math.max(1, height - top - bottom);
+
+    context.strokeStyle = palette.grid;
+    context.lineWidth = 1;
+    for (let index = 0; index <= 4; index += 1) {
+      const y = top + (plotHeight / 4) * index;
+      context.beginPath();
+      context.moveTo(left, y);
+      context.lineTo(width - right, y);
+      context.stroke();
+    }
+
+    const points = Array.isArray(samples)
+      ? samples
+          .map((sample, index) => ({
+            x: Number(sample && sample.elapsedMs),
+            y: Number(sample && sample[key]),
+            index
+          }))
+          .filter((item) => Number.isFinite(item.y))
+      : [];
+
+    if (!points.length) {
+      context.fillStyle = palette.muted;
+      context.font = '12px "Segoe UI", "Microsoft YaHei", sans-serif';
+      context.fillText('没有采样数据', left, top + 18);
+      return;
+    }
+
+    const minX = points.reduce((value, item) => Math.min(value, Number.isFinite(item.x) ? item.x : item.index), Number.POSITIVE_INFINITY);
+    const maxX = points.reduce((value, item) => Math.max(value, Number.isFinite(item.x) ? item.x : item.index), Number.NEGATIVE_INFINITY);
+    const minY = points.reduce((value, item) => Math.min(value, item.y), Number.POSITIVE_INFINITY);
+    const maxY = points.reduce((value, item) => Math.max(value, item.y), Number.NEGATIVE_INFINITY);
+
+    const safeMinX = Number.isFinite(minX) ? minX : 0;
+    const safeMaxX = Number.isFinite(maxX) ? maxX : points.length - 1;
+    const xSpan = Math.max(1, safeMaxX - safeMinX);
+    const paddingY = Math.max(Math.abs(maxY - minY) * 0.1, 0.001);
+    const safeMinY = minY - paddingY;
+    const safeMaxY = maxY + paddingY;
+    const ySpan = Math.max(0.001, safeMaxY - safeMinY);
+
+    context.fillStyle = palette.text;
+    context.font = '11px "Segoe UI", "Microsoft YaHei", sans-serif';
+    for (let index = 0; index <= 4; index += 1) {
+      const yValue = safeMaxY - (ySpan / 4) * index;
+      const y = top + (plotHeight / 4) * index + 4;
+      context.fillText(formatNumber(yValue), 8, y);
+    }
+
+    context.fillText(unit || '-', width - right - 64, top - 2);
+    context.fillText(`${Math.round((safeMaxX - safeMinX) / 1000)}s`, width - right - 24, height - 8);
+
+    context.beginPath();
+    points.forEach((item, index) => {
+      const xValue = Number.isFinite(item.x) ? item.x : item.index;
+      const x = left + ((xValue - safeMinX) / xSpan) * plotWidth;
+      const y = top + (1 - ((item.y - safeMinY) / ySpan)) * plotHeight;
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    });
+    context.strokeStyle = palette.line;
+    context.lineWidth = 2;
+    context.stroke();
+
+    const last = points[points.length - 1];
+    const lastXValue = Number.isFinite(last.x) ? last.x : last.index;
+    const lastX = left + ((lastXValue - safeMinX) / xSpan) * plotWidth;
+    const lastY = top + (1 - ((last.y - safeMinY) / ySpan)) * plotHeight;
+    context.fillStyle = palette.line;
+    context.beginPath();
+    context.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  function openDetail(record, keepSelection) {
+    if (!record) {
+      return;
+    }
+
+    if (!keepSelection) {
+      state.selectedRecordId = record.id;
+    }
+
+    const reasonText = record.resultCode === 'NG'
+      ? (record.errorText || record.errorCode || '-')
+      : '-';
+    const pressureValue = Number.isFinite(Number(record.finalPressure)) ? record.finalPressure : record.testPressure;
+    const samples = Array.isArray(record.samples) ? record.samples : [];
+
+    dom.detailSubtitle.textContent = `记录 ${record.sequenceCode || '-'} · ${record.productModel || '-'} · ${samples.length} 个采样点`;
+    dom.detailMeta.textContent = record.finishedAt
+      ? `完成于 ${formatDateTime(record.finishedAt)}`
+      : `开始于 ${formatDateTime(record.startedAt)}`;
+
+    dom.detailResult.textContent = record.resultCode || 'UNKNOWN';
+    dom.detailResult.className = `detail-result ${record.resultCode === 'OK' ? 'ok' : record.resultCode === 'NG' ? 'ng' : 'unknown'}`;
+
+    dom.detailSequence.textContent = record.sequenceCode || '-';
+    dom.detailProduct.textContent = record.productModel || '-';
+    dom.detailOperator.textContent = record.operatorName || '-';
+    dom.detailProgram.textContent = record.ateqProgramNo != null ? String(record.ateqProgramNo) : '-';
+    dom.detailQr.textContent = record.qrCode || '-';
+    dom.detailStartMode.textContent = formatStartMode(record.startMode);
+    dom.detailSampleCount.textContent = String(record.sampleCount || samples.length || 0);
+    dom.detailStartedAt.textContent = formatDateTime(record.startedAt);
+    dom.detailFinishedAt.textContent = formatDateTime(record.finishedAt);
+    dom.detailFinalPressure.textContent = formatValueWithUnit(pressureValue, record.pressureUnit || '');
+    dom.detailFinalLeak.textContent = formatValueWithUnit(record.finalLeak, record.leakUnit || '');
+    dom.detailFailureReason.textContent = reasonText;
+    dom.detailErrorCode.textContent = record.errorCode || '-';
+    dom.detailStatusWord.textContent = record.rawStatusWord != null ? String(record.rawStatusWord) : '-';
+
+    const pressureUnit = record.pressureUnit || (samples.find((sample) => sample && sample.pressureUnit) || {}).pressureUnit || '';
+    const leakUnit = record.leakUnit || (samples.find((sample) => sample && sample.leakUnit) || {}).leakUnit || '';
+    drawDetailChart(dom.detailPressureChart, samples, 'pressure', pressureUnit, '#2db8e6');
+    drawDetailChart(dom.detailLeakChart, samples, 'leak', leakUnit, '#3bcf84');
+
+    dom.detailMask.classList.add('open');
+    renderRecords();
+  }
+
+  function closeDetail() {
+    state.selectedRecordId = null;
+    dom.detailMask.classList.remove('open');
+    renderRecords();
+  }
+
+  dom.btnSearch.addEventListener('click', () => {
+    state.page = 1;
+    runQuery(1);
+  });
+
+  dom.btnExport.addEventListener('click', exportCsv);
+  dom.btnReset.addEventListener('click', () => {
+    resetFilters();
+    closeDetail();
+    runQuery(1);
+  });
+  dom.btnToday.addEventListener('click', () => {
+    setTodayRange();
+    state.page = 1;
+    runQuery(1);
+  });
+  dom.btnPrev.addEventListener('click', () => changePage(state.page - 1));
+  dom.btnNext.addEventListener('click', () => changePage(state.page + 1));
+
+  dom.recordsBody.addEventListener('click', (event) => {
+    const row = event.target.closest('tr[data-record-id]');
+    if (!row) {
+      return;
+    }
+    const record = getRecordById(row.getAttribute('data-record-id'));
+    if (record) {
+      openDetail(record, false);
+    }
+  });
+
+  dom.detailClose.addEventListener('click', closeDetail);
+  dom.detailMask.addEventListener('click', (event) => {
+    if (event.target === dom.detailMask) {
+      closeDetail();
+    }
+  });
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dom.detailMask.classList.contains('open')) {
+      closeDetail();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (!state.selectedRecordId || !dom.detailMask.classList.contains('open')) {
+      return;
+    }
+    const record = getRecordById(state.selectedRecordId);
+    if (record) {
+      openDetail(record, true);
+    }
+  });
+
+  [dom.qrKeyword, dom.failureReason].forEach((element) => {
+    element.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        state.page = 1;
+        runQuery(1);
+      }
+    });
+  });
+
+  async function init() {
+    resetFilters();
+    await loadProducts();
+    await runQuery(1);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

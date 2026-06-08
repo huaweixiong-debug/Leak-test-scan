@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>泄漏测试</title>
+<script src="/appearance.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<style>
+  :root{
+    --bg:#09131d;
+    --panel:#102131;
+    --panel-2:#0b1824;
+    --border:#1f3a52;
+    --border-strong:#29506f;
+    --text:#ecf4fb;
+    --muted:#84a0b7;
+    --accent:#24a9d7;
+    --accent-soft:rgba(36,169,215,.18);
+    --good:#34c67a;
+    --good-soft:rgba(52,198,122,.12);
+    --bad:#ff5a5a;
+    --bad-soft:rgba(255,90,90,.12);
+    --warn:#d8dde5;
+    --shadow:0 12px 30px rgba(0,0,0,.22);
+  }
+
+  *{box-sizing:border-box}
+
+  html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at top left, rgba(34,94,138,.22), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #08131d 100%);
+    color:var(--text);
+    font-family:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+  }
+
+  body{
+    padding:10px;
+  }
+
+  .app-shell{
+    width:100%;
+    max-width:1260px;
+    height:calc(100vh - 20px);
+    margin:0 auto;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) clamp(156px, 19vh, 186px);
+    gap:10px;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, rgba(17,34,50,.96) 0%, rgba(13,28,42,.98) 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    min-width:0;
+  }
+
+  .header{
+    padding:14px 16px;
+    display:grid;
+    grid-template-columns:minmax(220px,1.1fr) repeat(4, auto);
+    align-items:center;
+    gap:12px;
+    min-height:74px;
+  }
+
+  .title-block h1{
+    margin:0;
+    font-size:19px;
+    line-height:1.1;
+    font-weight:800;
+    letter-spacing:.4px;
+  }
+
+  .title-block p{
+    margin:4px 0 0;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.4px;
+  }
+
+  .title-links{
+    display:flex;
+    gap:10px;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+
+  .title-link{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:12px;
+    letter-spacing:.2px;
+    transition:color .12s ease;
+  }
+
+  .title-link:hover{
+    color:#d5f3ff;
+  }
+
+  .control-group{
+    min-width:0;
+  }
+
+  .control-label{
+    display:block;
+    margin:0 0 6px;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.3px;
+  }
+
+  .control-select{
+    width:146px;
+    height:38px;
+    padding:0 14px;
+    border-radius:13px;
+    border:1px solid var(--border-strong);
+    background:#07121c;
+    color:var(--text);
+    font-size:14px;
+    outline:none;
+  }
+
+  .badge{
+    height:38px;
+    padding:0 16px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border:1px solid var(--border);
+    background:rgba(5,17,27,.86);
+    font-size:14px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+
+  .badge-program{
+    min-width:110px;
+  }
+
+  .badge-online .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--good);
+    box-shadow:0 0 10px rgba(52,198,122,.7);
+  }
+
+  .badge-offline .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--bad);
+    box-shadow:0 0 10px rgba(255,90,90,.6);
+  }
+
+  .main{
+    min-height:0;
+    display:grid;
+    grid-template-columns:minmax(0,1.72fr) minmax(360px,.98fr);
+    gap:10px;
+  }
+
+  .left-column,
+  .right-column{
+    min-height:0;
+    display:grid;
+    gap:10px;
+  }
+
+  .left-column{
+    grid-template-rows:auto auto minmax(0,1fr);
+  }
+
+  .right-column{
+    grid-template-rows:auto minmax(0,1fr);
+  }
+
+  .section{
+    padding:14px 14px 12px;
+    min-height:0;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  .section-head h2{
+    margin:0;
+    font-size:14px;
+    color:var(--accent);
+    letter-spacing:.2px;
+  }
+
+  .section-meta{
+    font-size:12px;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+
+  .scan-payload{
+    min-height:98px;
+    padding:14px 16px;
+    border-radius:16px;
+    border:1px solid var(--border-strong);
+    background:linear-gradient(180deg, #06111b 0%, #08141f 100%);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:10px;
+  }
+
+  .scan-eyebrow{
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.7px;
+  }
+
+  .scan-value{
+    font-size:22px;
+    font-weight:800;
+    line-height:1.2;
+    word-break:break-all;
+  }
+
+  .scan-empty{
+    color:var(--muted);
+    font-size:18px;
+    font-weight:700;
+  }
+
+  .scan-match-row{
+    margin-top:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .scan-match-text{
+    min-width:0;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  .scan-match-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:92px;
+    min-height:30px;
+    padding:0 12px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(5,17,27,.82);
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+
+  .scan-match-badge.good{
+    border-color:rgba(52,198,122,.38);
+    background:var(--good-soft);
+    color:#aaf2c7;
+  }
+
+  .scan-match-badge.bad{
+    border-color:rgba(255,90,90,.38);
+    background:var(--bad-soft);
+    color:#ffc4c4;
+  }
+
+  .scan-match-badge.neutral{
+    border-color:var(--border);
+    background:rgba(5,17,27,.82);
+    color:var(--muted);
+  }
+
+  .metrics-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .metric-card{
+    padding:14px 16px;
+    border-radius:18px;
+    border:1px solid var(--border);
+    background:linear-gradient(180deg, #102131 0%, #0c1824 100%);
+    min-height:102px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  .metric-label{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  .metric-value{
+    font-size:24px;
+    line-height:1;
+    font-weight:800;
+    letter-spacing:.6px;
+    font-family:Consolas,"SFMono-Regular",monospace;
+  }
+
+  .metric-sub{
+    font-size:13px;
+    color:var(--muted);
+    min-height:18px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .charts-wrap{
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+  }
+
+  .charts-grid{
+    min-height:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .chart-card{
+    min-height:0;
+    padding:12px;
+    border-radius:16px;
+    border:1px solid var(--border);
+    background:rgba(7,17,27,.58);
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    gap:8px;
+  }
+
+  .chart-title{
+    font-size:13px;
+    color:var(--text);
+    font-weight:700;
+  }
+
+  .chart-canvas{
+    width:100%;
+    height:100%;
+    min-height:126px;
+    border-radius:12px;
+    background:linear-gradient(180deg, #06111a 0%, #08131d 100%);
+  }
+
+  .flow-panel{
+    padding:14px 14px 12px;
+  }
+
+  .flow-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+  }
+
+  .flow-step{
+    min-width:0;
+    min-height:100px;
+    padding:8px 6px;
+    border-radius:18px;
+    border:1px solid rgba(41,80,111,.55);
+    background:rgba(7,17,27,.48);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:space-between;
+    text-align:center;
+    transition:all .18s ease;
+  }
+
+  .flow-index{
+    min-width:30px;
+    height:30px;
+    padding:0 10px;
+    border-radius:12px;
+    background:rgba(255,255,255,.04);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    font-weight:800;
+    color:var(--muted);
+  }
+
+  .flow-name{
+    font-size:12px;
+    font-weight:800;
+  }
+
+  .flow-time{
+    font-size:11px;
+    font-weight:700;
+    color:#d7f4ff;
+    font-family:Consolas,"SFMono-Regular",monospace;
+  }
+
+  .flow-note{
+    font-size:10px;
+    color:var(--muted);
+    letter-spacing:.2px;
+  }
+
+  .flow-step.future{
+    opacity:.62;
+  }
+
+  .flow-step.past{
+    background:rgba(52,198,122,.08);
+    border-color:rgba(52,198,122,.28);
+  }
+
+  .flow-step.past .flow-index{
+    background:rgba(52,198,122,.14);
+    color:var(--good);
+  }
+
+  .flow-step.active{
+    border-color:rgba(36,169,215,.9);
+    box-shadow:inset 0 0 0 1px rgba(36,169,215,.45);
+    background:rgba(36,169,215,.1);
+    opacity:1;
+  }
+
+  .flow-step.active .flow-index{
+    background:rgba(36,169,215,.2);
+    color:#8fe8ff;
+  }
+
+  .flow-step.active .flow-time{
+    color:#8fe8ff;
+  }
+
+  .flow-step.done-ok{
+    background:rgba(52,198,122,.11);
+    border-color:rgba(52,198,122,.45);
+  }
+
+  .flow-step.done-ok .flow-index{
+    background:rgba(52,198,122,.2);
+    color:var(--good);
+  }
+
+  .flow-step.done-ok .flow-time{
+    color:#9af0bf;
+  }
+
+  .flow-step.done-ng{
+    background:rgba(255,90,90,.11);
+    border-color:rgba(255,90,90,.42);
+  }
+
+  .flow-step.done-ng .flow-index{
+    background:rgba(255,90,90,.18);
+    color:var(--bad);
+  }
+
+  .flow-step.done-ng .flow-time{
+    color:#ffb3b3;
+  }
+
+  .action-panel{
+    padding:12px;
+    display:grid;
+    grid-template-rows:auto auto auto auto;
+    gap:8px;
+    min-height:0;
+  }
+
+  .actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .action-btn{
+    height:40px;
+    border:none;
+    border-radius:16px;
+    font-size:14px;
+    font-weight:800;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease, background .12s ease;
+  }
+
+  .action-btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+  }
+
+  .action-btn:active:not(:disabled){
+    transform:translateY(1px);
+  }
+
+  .action-btn.primary{
+    color:#fff;
+    background:linear-gradient(180deg, #2fb6e1 0%, #1e9fc9 100%);
+  }
+
+  .action-btn.secondary{
+    color:var(--text);
+    background:transparent;
+    border:1px solid var(--border-strong);
+  }
+
+  .result-card{
+    border-radius:16px;
+    border:1px solid var(--border);
+    background:rgba(7,17,27,.55);
+    padding:10px 12px;
+  }
+
+  .result-label{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+
+  .result-value{
+    font-size:22px;
+    font-weight:800;
+    line-height:1;
+    margin-bottom:6px;
+  }
+
+  .result-value.ok{color:var(--good)}
+  .result-value.ng{color:var(--bad)}
+  .result-value.wait{color:#d7e0ea}
+
+  .result-note{
+    font-size:13px;
+    color:var(--muted);
+    min-height:16px;
+  }
+
+  .mini-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .mini-card{
+    border-radius:16px;
+    border:1px solid var(--border);
+    background:rgba(7,17,27,.45);
+    padding:10px 12px;
+    min-height:62px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  .mini-label{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  .mini-value{
+    font-size:15px;
+    font-weight:800;
+    font-family:Consolas,"SFMono-Regular",monospace;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .today-panel{
+    padding:10px 12px 12px;
+  }
+
+  .today-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .today-card{
+    min-height:48px;
+    padding:8px 10px;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:rgba(7,17,27,.42);
+  }
+
+  .today-label{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+
+  .today-value{
+    font-size:17px;
+    font-weight:800;
+    font-family:Consolas,"SFMono-Regular",monospace;
+  }
+
+  .records-panel{
+    min-height:0;
+    padding:12px 14px 10px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    overflow:hidden;
+  }
+
+  .records-wrap{
+    min-height:0;
+    max-height:100%;
+    overflow:auto;
+    border-radius:14px;
+    border:1px solid rgba(31,58,82,.65);
+    background:rgba(7,17,27,.38);
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+  }
+
+  thead th{
+    position:sticky;
+    top:0;
+    z-index:1;
+    background:#0f2233;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid rgba(31,58,82,.85);
+    white-space:nowrap;
+  }
+
+  tbody td{
+    padding:9px 12px;
+    font-size:12px;
+    border-bottom:1px solid rgba(31,58,82,.45);
+    font-family:Consolas,"SFMono-Regular",monospace;
+    white-space:nowrap;
+  }
+
+  tbody tr:hover{
+    background:rgba(255,255,255,.03);
+  }
+
+  .ok-text{color:var(--good);font-weight:800}
+  .ng-text{color:var(--bad);font-weight:800}
+
+  .error-toast{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    max-width:min(720px, calc(100vw - 40px));
+    padding:12px 18px;
+    border-radius:14px;
+    border:1px solid rgba(255,90,90,.35);
+    background:rgba(50,12,18,.94);
+    color:#ffd7d7;
+    font-size:13px;
+    box-shadow:0 16px 30px rgba(0,0,0,.28);
+    display:none;
+    z-index:10;
+  }
+
+  @media (max-width: 1120px){
+    body{overflow:auto}
+    .app-shell{
+      height:auto;
+      min-height:calc(100vh - 28px);
+      grid-template-rows:auto auto auto;
+    }
+
+    .header{
+      grid-template-columns:1fr 1fr;
+    }
+
+    .main{
+      grid-template-columns:1fr;
+    }
+
+    .records-panel{
+      min-height:300px;
+    }
+  }
+
+  @media (max-height: 860px){
+    body{
+      padding:8px;
+    }
+
+    .app-shell{
+      height:calc(100vh - 16px);
+      grid-template-rows:auto minmax(0,1fr) 152px;
+      gap:8px;
+    }
+
+    .header{
+      padding:12px 14px;
+      min-height:68px;
+      gap:10px;
+    }
+
+    .title-block h1{
+      font-size:18px;
+    }
+
+    .title-block p,
+    .title-link,
+    .control-label,
+    .section-meta{
+      font-size:11px;
+    }
+
+    .control-select,
+    .badge{
+      height:34px;
+    }
+
+    .main,
+    .left-column,
+    .right-column,
+    .metrics-grid,
+    .charts-grid,
+    .mini-grid,
+    .today-grid{
+      gap:8px;
+    }
+
+    .section,
+    .flow-panel,
+    .action-panel,
+    .today-panel{
+      padding:12px;
+    }
+
+    .scan-payload{
+      min-height:86px;
+      padding:12px 14px;
+    }
+
+    .scan-value{
+      font-size:20px;
+    }
+
+    .metric-card{
+      min-height:92px;
+      padding:12px 14px;
+    }
+
+    .metric-value{
+      font-size:22px;
+    }
+
+    .chart-card{
+      padding:10px;
+    }
+
+    .chart-canvas{
+      min-height:112px;
+    }
+
+    .flow-step{
+      min-height:88px;
+      padding:8px 6px;
+      border-radius:16px;
+    }
+
+    .flow-index{
+      min-width:28px;
+      height:28px;
+      font-size:13px;
+    }
+
+    .flow-name{
+      font-size:11px;
+    }
+
+    .flow-note{
+      font-size:9px;
+    }
+
+    .action-btn{
+      height:38px;
+    }
+
+    .result-value{
+      font-size:20px;
+    }
+
+    .mini-card{
+      min-height:58px;
+      padding:9px 10px;
+    }
+
+    .mini-value,
+    .today-value{
+      font-size:14px;
+    }
+
+    .today-card{
+      min-height:44px;
+      padding:8px 10px;
+    }
+
+    .records-panel{
+      padding:10px 12px 8px;
+    }
+
+    thead th,
+    tbody td{
+      padding:8px 10px;
+      font-size:11px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="panel header">
+      <div class="title-block">
+        <h1>泄漏测试</h1>
+        <p>1280 x 1024 industrial web console</p>
+        <div class="title-links">
+          <a class="title-link" href="/query.html">数据查询</a>
+          <a class="title-link" href="/settings.html">系统设置</a>
+          <a class="title-link" href="/comm-config.html">通讯配置</a>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="sel-product">产品型号</label>
+        <select class="control-select" id="sel-product">
+          <option value="">请选择</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label" for="sel-operator">操作人员</label>
+        <select class="control-select" id="sel-operator">
+          <option value="">请选择</option>
+        </select>
+      </div>
+
+      <div class="badge badge-program" id="program-badge">程序 -</div>
+
+      <div class="badge badge-online" id="ateq-badge">
+        <span class="dot"></span>
+        <span id="ateq-badge-text">ONLINE</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="left-column">
+        <div class="panel section">
+          <div class="section-head">
+            <h2>扫码结果</h2>
+            <div class="section-meta" id="scan-status-text">串口离线</div>
+          </div>
+          <div class="scan-payload">
+            <div class="scan-eyebrow">LATEST SCAN PAYLOAD</div>
+            <div class="scan-value scan-empty" id="scan-value">等待扫码...</div>
+          </div>
+          <div class="scan-match-row">
+            <div class="scan-match-text" id="scan-match-text">请选择产品并扫码。</div>
+            <div class="scan-match-badge neutral" id="scan-match-badge">等待扫码</div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">实时压力</div>
+            <div class="metric-value" id="metric-pressure">0.000</div>
+            <div class="metric-sub" id="metric-pressure-sub">单位 kPa</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">实时 / 最终漏率</div>
+            <div class="metric-value" id="metric-leak">0.000</div>
+            <div class="metric-sub" id="metric-leak-sub">最终 0.000 Pa</div>
+          </div>
+        </div>
+
+        <div class="panel section charts-wrap">
+          <div class="section-head">
+            <h2>测试曲线</h2>
+            <div class="section-meta">测试中自动切换到高频采样</div>
+          </div>
+
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-title">压力趋势</div>
+              <canvas class="chart-canvas" id="pressure-chart" width="480" height="220"></canvas>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">漏率趋势</div>
+              <canvas class="chart-canvas" id="leak-chart" width="480" height="220"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="right-column">
+        <div class="panel flow-panel">
+          <div class="section-head">
+            <h2>测试流程</h2>
+            <div class="section-meta" id="flow-status-text">WAIT</div>
+          </div>
+
+          <div class="flow-row" id="flow-row">
+            <div class="flow-step future" data-flow-step="4">
+              <div class="flow-index">4</div>
+              <div class="flow-name">充气</div>
+              <div class="flow-time" id="flow-fill-time">--.-s</div>
+              <div class="flow-name">充气</div>
+              <div class="flow-note">STEP 4</div>
+            </div>
+            <div class="flow-step future" data-flow-step="5">
+              <div class="flow-index">5</div>
+              <div class="flow-name">稳压</div>
+              <div class="flow-note">STEP 5</div>
+            </div>
+            <div class="flow-step future" data-flow-step="6">
+              <div class="flow-index">6</div>
+              <div class="flow-name">测试</div>
+              <div class="flow-note">STEP 6-7</div>
+            </div>
+            <div class="flow-step future" data-flow-step="65535">
+              <div class="flow-index">END</div>
+              <div class="flow-name">结束</div>
+              <div class="flow-note">STEP 65535</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel action-panel">
+          <div class="actions">
+            <button class="action-btn primary" id="btn-start" type="button">启动测试</button>
+            <button class="action-btn secondary" id="btn-reset" type="button">复位</button>
+          </div>
+
+          <div class="result-card">
+            <div class="result-label">测试结果</div>
+            <div class="result-value wait" id="result-value">WAIT</div>
+            <div class="result-note" id="result-note">等待下一次测试</div>
+          </div>
+
+          <div class="mini-grid">
+            <div class="mini-card">
+              <div class="mini-label">最终压力</div>
+              <div class="mini-value" id="mini-final-pressure">-</div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-label">最终漏率</div>
+              <div class="mini-value" id="mini-final-leak">-</div>
+            </div>
+          </div>
+
+          <div class="panel today-panel">
+            <div class="section-head" style="margin-bottom:10px">
+              <h2>今日统计</h2>
+              <div class="section-meta" id="today-meta">截至 --:--:--</div>
+            </div>
+            <div class="today-grid">
+              <div class="today-card">
+                <div class="today-label">今日总数</div>
+                <div class="today-value" id="today-total">0</div>
+              </div>
+              <div class="today-card">
+                <div class="today-label">今日合格数</div>
+                <div class="today-value" id="today-ok">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="panel records-panel">
+      <div class="section-head">
+        <h2>最近测试记录</h2>
+        <div class="section-meta" id="records-meta">最近 20 条记录</div>
+      </div>
+
+      <div class="records-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>产品</th>
+              <th>二维码</th>
+              <th>压力</th>
+              <th>漏率</th>
+              <th>结果</th>
+              <th>操作员</th>
+              <th>时间</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="error-toast" id="error-toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const SETTINGS_SYNC_KEY = 'ateq-settings-updated';
+
+  const dom = {
+    productSelect: document.getElementById('sel-product'),
+    operatorSelect: document.getElementById('sel-operator'),
+    programBadge: document.getElementById('program-badge'),
+    ateqBadge: document.getElementById('ateq-badge'),
+    ateqBadgeText: document.getElementById('ateq-badge-text'),
+    scanStatusText: document.getElementById('scan-status-text'),
+    scanValue: document.getElementById('scan-value'),
+    scanMatchText: document.getElementById('scan-match-text'),
+    scanMatchBadge: document.getElementById('scan-match-badge'),
+    metricPressure: document.getElementById('metric-pressure'),
+    metricPressureSub: document.getElementById('metric-pressure-sub'),
+    metricLeak: document.getElementById('metric-leak'),
+    metricLeakSub: document.getElementById('metric-leak-sub'),
+    pressureChart: document.getElementById('pressure-chart'),
+    leakChart: document.getElementById('leak-chart'),
+    chartsWrap: document.querySelector('.charts-wrap'),
+    flowStatusText: document.getElementById('flow-status-text'),
+    flowSteps: Array.from(document.querySelectorAll('[data-flow-step]')),
+    btnStart: document.getElementById('btn-start'),
+    btnReset: document.getElementById('btn-reset'),
+    resultValue: document.getElementById('result-value'),
+    resultNote: document.getElementById('result-note'),
+    miniFinalPressure: document.getElementById('mini-final-pressure'),
+    miniFinalLeak: document.getElementById('mini-final-leak'),
+    todayMeta: document.getElementById('today-meta'),
+    todayTotal: document.getElementById('today-total'),
+    todayOk: document.getElementById('today-ok'),
+    recordsMeta: document.getElementById('records-meta'),
+    recordsBody: document.getElementById('records-body'),
+    errorToast: document.getElementById('error-toast')
+  };
+
+  const FLOW_ORDER = [4, 5, 6, 65535];
+
+  const state = {
+    products: [],
+    operators: [],
+    connected: false,
+    scannerConnected: false,
+    currentProgram: null,
+    currentStep: null,
+    resultCode: 'UNKNOWN',
+    errorCode: null,
+    errorText: null,
+    pressure: null,
+    pressureUnit: 'kPa',
+    leak: null,
+    leakUnit: 'Pa',
+    latestScan: null,
+    lastScanAlertKey: null,
+    activeTest: null,
+    finalPressure: null,
+    finalPressureUnit: null,
+    finalLeak: null,
+    finalLeakUnit: null,
+    pressureHistory: [],
+    leakHistory: [],
+    records: [],
+    todayTotalCount: 0,
+    todayOkCount: 0,
+    programTimings: null,
+    programTimingsKey: null,
+    programTimingLoading: false,
+    programTimingRetryAt: 0,
+    syncTimer: null,
+    statusPoller: null,
+    activePoller: null,
+    recordsPoller: null,
+    todayPoller: null,
+    scannerPoller: null
+  };
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showError(message) {
+    const text = String(message || '').trim();
+    if (!text) {
+      return;
+    }
+
+    dom.errorToast.textContent = text;
+    dom.errorToast.style.display = 'block';
+    clearTimeout(showError.timer);
+    showError.timer = window.setTimeout(() => {
+      dom.errorToast.style.display = 'none';
+    }, 4800);
+  }
+
+  async function api(url, options) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      ...options
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const message = payload && payload.message
+        ? payload.message
+        : `${url} ${response.status}`;
+      throw new Error(message);
+    }
+
+    return payload;
+  }
+
+  function formatNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(3) : '-';
+  }
+
+  function formatValueWithUnit(value, unit) {
+    if (!Number.isFinite(Number(value))) {
+      return '-';
+    }
+    return `${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
+  }
+
+  function formatShortTime(value) {
+    if (!value) {
+      return '--:--:--';
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '--:--:--';
+    }
+    return date.toLocaleTimeString('zh-CN', { hour12: false });
+  }
+
+  function getTodayRange() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return {
+      startTime: start.toISOString(),
+      endTime: end.toISOString()
+    };
+  }
+
+  function mapFlowStep(stepCode) {
+    if (stepCode === 4) return 4;
+    if (stepCode === 5) return 5;
+    if (stepCode === 6 || stepCode === 7) return 6;
+    if (stepCode === 65535) return 65535;
+    return null;
+  }
+
+  function isStartLocked() {
+    const active = state.activeTest;
+    return Boolean(active && (active.running || active.stage === 'armed'));
+  }
+
+  function setAteqStatus(connected) {
+    state.connected = Boolean(connected);
+    dom.ateqBadge.classList.toggle('badge-online', state.connected);
+    dom.ateqBadge.classList.toggle('badge-offline', !state.connected);
+    dom.ateqBadgeText.textContent = state.connected ? 'ONLINE' : 'OFFLINE';
+    dom.btnStart.disabled = !state.connected || isStartLocked();
+    dom.btnReset.disabled = !state.connected;
+  }
+
+function renderProgramBadge() {
+    const selectedProduct = resolveSelectedProduct();
+    const selectedProgram = selectedProduct && Number.isInteger(Number(selectedProduct.ateqProgramNo))
+      ? Number(selectedProduct.ateqProgramNo)
+      : null;
+    const currentProgram = Number.isInteger(Number(state.currentProgram))
+      ? Number(state.currentProgram)
+      : null;
+    const displayProgram = selectedProgram || currentProgram;
+
+    dom.programBadge.textContent = displayProgram ? `程序 ${displayProgram}` : '程序 -';
+
+    if (selectedProgram && currentProgram && selectedProgram !== currentProgram) {
+      dom.programBadge.title = `已选产品程序 ${selectedProgram}，当前程序 ${currentProgram}，启动测试时会自动切换`;
+      return;
+    }
+
+    if (selectedProgram) {
+      dom.programBadge.title = `已选产品程序 ${selectedProgram}`;
+      return;
+    }
+
+    if (currentProgram) {
+      dom.programBadge.title = `当前程序 ${currentProgram}`;
+      return;
+    }
+
+    dom.programBadge.removeAttribute('title');
+  }
+
+  function renderScan() {
+    dom.scanStatusText.textContent = state.scannerConnected ? 'Scanner Online' : 'Scanner Offline';
+
+    if (state.latestScan && state.latestScan.rawText) {
+      dom.scanValue.textContent = state.latestScan.rawText;
+      dom.scanValue.classList.remove('scan-empty');
+    } else {
+      dom.scanValue.textContent = 'Waiting scan...';
+      dom.scanValue.classList.add('scan-empty');
+    }
+
+    const scanMatchState = getScanMatchState();
+    dom.scanMatchText.textContent = scanMatchState.helperText;
+    dom.scanMatchBadge.textContent = scanMatchState.badgeText;
+    dom.scanMatchBadge.className = `scan-match-badge ${scanMatchState.badgeClass}`;
+  }
+
+  function renderMetrics() {
+    dom.metricPressure.textContent = formatNumber(state.pressure);
+    dom.metricPressureSub.textContent = `单位 ${state.pressureUnit || '-'}`;
+
+    const leakDisplayValue = Number.isFinite(Number(state.finalLeak)) ? state.finalLeak : state.leak;
+    const leakDisplayUnit = Number.isFinite(Number(state.finalLeak)) ? (state.finalLeakUnit || state.leakUnit) : state.leakUnit;
+
+    dom.metricLeak.textContent = formatNumber(leakDisplayValue);
+    dom.metricLeakSub.textContent = Number.isFinite(Number(state.finalLeak))
+      ? `最终 ${formatValueWithUnit(state.finalLeak, state.finalLeakUnit || state.leakUnit)}`
+      : `当前 ${formatValueWithUnit(state.leak, state.leakUnit)}`;
+
+    dom.miniFinalPressure.textContent = formatValueWithUnit(state.finalPressure, state.finalPressureUnit || state.pressureUnit);
+    dom.miniFinalLeak.textContent = formatValueWithUnit(state.finalLeak, state.finalLeakUnit || state.leakUnit);
+  }
+
+  function resolveSelectedProduct() {
+    const selectedModel = dom.productSelect.value;
+    return state.products.find((item) => item.productModel === selectedModel) || null;
+  }
+
+  function doesScanMatchProduct(productProfile, scanText) {
+    if (!productProfile) {
+      return true;
+    }
+
+    const qrKeyword = String(productProfile.qrKeyword || '').trim();
+    if (!qrKeyword) {
+      return true;
+    }
+
+    const normalizedScanText = String(scanText || '').trim();
+    if (!normalizedScanText) {
+      return false;
+    }
+
+    return normalizedScanText.toUpperCase().includes(qrKeyword.toUpperCase());
+  }
+
+  function normalizeProductFlags(product) {
+    if (!product) {
+      return product;
+    }
+
+    return {
+      ...product,
+      scanConfirmEnabled: product.scanConfirmEnabled !== false,
+      scanMatchEnabled: product.scanMatchEnabled === true,
+      scanAutoStartEnabled: product.scanAutoStartEnabled === true
+    };
+  }
+
+  function doesScanMatchSelectedProduct(productProfile) {
+    const latestScanText = String(state.latestScan && state.latestScan.rawText ? state.latestScan.rawText : '').trim();
+    return doesScanMatchProduct(productProfile, latestScanText);
+  }
+
+  function getScanAlertKey(productProfile, scan) {
+    if (!productProfile || !scan) {
+      return '';
+    }
+
+    return [
+      productProfile.productModel || '',
+      scan.id || '',
+      scan.scannedAt || '',
+      scan.rawText || ''
+    ].join('|');
+  }
+
+  function maybeAlertScanMismatch(previousScan, nextScan) {
+    const selectedProduct = resolveSelectedProduct();
+    if (!selectedProduct || selectedProduct.scanMatchEnabled !== true || !nextScan) {
+      return;
+    }
+
+    const previousKey = previousScan ? getScanAlertKey(selectedProduct, previousScan) : '';
+    const nextKey = getScanAlertKey(selectedProduct, nextScan);
+    if (!nextKey || nextKey === previousKey || nextKey === state.lastScanAlertKey) {
+      return;
+    }
+
+    if (doesScanMatchProduct(selectedProduct, nextScan.rawText)) {
+      return;
+    }
+
+    state.lastScanAlertKey = nextKey;
+    const message = `扫码内容与产品 ${selectedProduct.productModel} 不匹配，要求包含关键词：${selectedProduct.qrKeyword}`;
+    window.alert(message);
+    showError(message);
+  }
+
+  function getScanMatchState() {
+    const selectedProduct = resolveSelectedProduct();
+    const latestScanText = String(state.latestScan && state.latestScan.rawText ? state.latestScan.rawText : '').trim();
+    const requireScanRecord = Boolean(selectedProduct && selectedProduct.scanConfirmEnabled !== false);
+    const requireScanMatch = Boolean(selectedProduct && selectedProduct.scanMatchEnabled === true);
+    const autoScanStartEnabled = Boolean(selectedProduct && selectedProduct.scanAutoStartEnabled === true);
+
+    if (!selectedProduct) {
+      return {
+        badgeClass: 'neutral',
+        badgeText: 'NO PRODUCT',
+        helperText: 'Select product and scan.'
+      };
+    }
+
+    if (!requireScanRecord && !requireScanMatch) {
+      return {
+        badgeClass: 'neutral',
+        badgeText: 'SCAN OPTIONAL',
+        helperText: `Product ${selectedProduct.productModel} can start with or without scan.`
+      };
+    }
+
+    const qrKeyword = String(selectedProduct.qrKeyword || '').trim();
+    if (requireScanMatch && !qrKeyword) {
+      return {
+        badgeClass: 'neutral',
+        badgeText: 'NO KEYWORD',
+        helperText: `Product ${selectedProduct.productModel} is missing a QR keyword.`
+      };
+    }
+
+    if (!latestScanText) {
+      return {
+        badgeClass: 'neutral',
+        badgeText: 'WAIT SCAN',
+        helperText: requireScanMatch
+          ? `Expected keyword: ${qrKeyword}`
+          : `Scan record is required for ${selectedProduct.productModel}.`
+      };
+    }
+
+    if (!requireScanMatch) {
+      return {
+        badgeClass: 'good',
+        badgeText: 'SCAN READY',
+        helperText: autoScanStartEnabled
+          ? `Scan can auto start ${selectedProduct.productModel}.`
+          : `Scan will be saved with ${selectedProduct.productModel} test record.`
+      };
+    }
+
+    if (doesScanMatchSelectedProduct(selectedProduct)) {
+      return {
+        badgeClass: 'good',
+        badgeText: 'MATCHED',
+        helperText: `Scan matched ${selectedProduct.productModel} keyword: ${qrKeyword}`
+      };
+    }
+
+    return {
+      badgeClass: 'bad',
+      badgeText: 'MISMATCH',
+      helperText: `Scan missing ${selectedProduct.productModel} keyword: ${qrKeyword}`
+    };
+  }
+
+  function resolveProgramNumberForTimings() {
+    const selectedProduct = resolveSelectedProduct();
+    if (selectedProduct && Number.isInteger(Number(selectedProduct.ateqProgramNo))) {
+      return Number(selectedProduct.ateqProgramNo);
+    }
+
+    if (Number.isInteger(Number(state.currentProgram))) {
+      return Number(state.currentProgram);
+    }
+
+    return null;
+  }
+
+  function getPressureChartDurationMs() {
+    if (!state.programTimings) {
+      return null;
+    }
+
+    const fillTimeMs = Number(state.programTimings.fillTimeMs);
+    const stabTimeMs = Number(state.programTimings.stabTimeMs);
+    let total = 0;
+
+    if (Number.isFinite(fillTimeMs) && fillTimeMs > 0) {
+      total += fillTimeMs;
+    }
+
+    if (Number.isFinite(stabTimeMs) && stabTimeMs > 0) {
+      total += stabTimeMs;
+    }
+
+    return total > 0 ? total : null;
+  }
+
+  function getLeakChartDurationMs() {
+    if (!state.programTimings) {
+      return null;
+    }
+
+    const testTimeMs = Number(state.programTimings.testTimeMs);
+    return Number.isFinite(testTimeMs) && testTimeMs > 0 ? testTimeMs : null;
+  }
+
+  function formatStageDuration(valueMs) {
+    const numericValue = Number(valueMs);
+    if (!Number.isFinite(numericValue) || numericValue <= 0) {
+      return '--.-s';
+    }
+
+    return `${(numericValue / 1000).toFixed(1)}s`;
+  }
+
+  function ensureFlowTimingNodes() {
+    dom.flowSteps.forEach((element) => {
+      const flowStep = element.getAttribute('data-flow-step');
+      const flowNames = Array.from(element.querySelectorAll('.flow-name'));
+      if (flowNames.length > 1) {
+        flowNames.slice(1).forEach((node) => node.remove());
+      }
+
+      let timeNode = element.querySelector('.flow-time');
+      if (!timeNode) {
+        timeNode = document.createElement('div');
+        timeNode.className = 'flow-time';
+        const noteNode = element.querySelector('.flow-note');
+        if (noteNode) {
+          element.insertBefore(timeNode, noteNode);
+        } else {
+          element.appendChild(timeNode);
+        }
+      }
+
+      if (flowStep === '4') {
+        timeNode.id = 'flow-fill-time';
+      } else if (flowStep === '5') {
+        timeNode.id = 'flow-stab-time';
+      } else if (flowStep === '6') {
+        timeNode.id = 'flow-test-time';
+      } else if (flowStep === '65535') {
+        timeNode.id = 'flow-end-time';
+      }
+    });
+  }
+
+  function renderProgramTimings() {
+    ensureFlowTimingNodes();
+
+    const fillTimeNode = document.getElementById('flow-fill-time') || dom.flowSteps[0]?.querySelector('.flow-time');
+    const stabTimeNode = document.getElementById('flow-stab-time') || dom.flowSteps[1]?.querySelector('.flow-time');
+    const testTimeNode = document.getElementById('flow-test-time') || dom.flowSteps[2]?.querySelector('.flow-time');
+    const endTimeNode = document.getElementById('flow-end-time') || dom.flowSteps[3]?.querySelector('.flow-time');
+
+    if (fillTimeNode) {
+      fillTimeNode.textContent = formatStageDuration(state.programTimings?.fillTimeMs);
+    }
+
+    if (stabTimeNode) {
+      stabTimeNode.textContent = formatStageDuration(state.programTimings?.stabTimeMs);
+    }
+
+    if (testTimeNode) {
+      testTimeNode.textContent = formatStageDuration(state.programTimings?.testTimeMs);
+    }
+
+    if (endTimeNode) {
+      endTimeNode.textContent = '判定';
+    }
+  }
+
+  function ensureChartsMetaNode() {
+    if (!dom.chartsWrap) {
+      return null;
+    }
+
+    let metaNode = dom.chartsWrap.querySelector('#charts-meta');
+    if (metaNode) {
+      return metaNode;
+    }
+
+    const sectionHead = dom.chartsWrap.querySelector('.section-head');
+    if (!sectionHead) {
+      return null;
+    }
+
+    metaNode = sectionHead.querySelector('.section-meta');
+    if (!metaNode) {
+      metaNode = document.createElement('div');
+      metaNode.className = 'section-meta';
+      sectionHead.appendChild(metaNode);
+    }
+
+    metaNode.id = 'charts-meta';
+    return metaNode;
+  }
+
+  function renderChartMeta() {
+    const metaNode = ensureChartsMetaNode();
+    if (!metaNode) {
+      return;
+    }
+
+    const pressureDurationMs = getPressureChartDurationMs();
+    const leakDurationMs = getLeakChartDurationMs();
+    const pressureText = Number.isFinite(Number(pressureDurationMs)) && Number(pressureDurationMs) > 0
+      ? `压力轴 ${formatStageDuration(pressureDurationMs)}`
+      : '压力轴待同步';
+    const leakText = Number.isFinite(Number(leakDurationMs)) && Number(leakDurationMs) > 0
+      ? `泄漏轴 ${formatStageDuration(leakDurationMs)}`
+      : '泄漏轴待同步';
+
+    metaNode.textContent = `${pressureText} / ${leakText}`;
+  }
+
+  function formatDurationTick(seconds, totalDurationSeconds) {
+    if (!Number.isFinite(seconds)) {
+      return '0s';
+    }
+
+    if (totalDurationSeconds < 10) {
+      return `${seconds.toFixed(1)}s`;
+    }
+
+    return `${Math.round(seconds)}s`;
+  }
+
+  function renderResult() {
+    const active = state.activeTest;
+    let resultCode = state.resultCode;
+    let note = '等待下一次测试';
+    let reasonText = state.errorText || '';
+
+    if (active && active.running) {
+      resultCode = 'WAIT';
+      note = '测试进行中';
+    } else if (active && active.stage === 'armed') {
+      resultCode = 'WAIT';
+      note = '等待进入步骤 4';
+    } else if (active && active.stage === 'ready') {
+      note = '已就绪，可启动测试';
+    } else if (active && active.stage === 'failed') {
+      resultCode = 'NG';
+      note = active.message || active.errorCode || '测试失败';
+    } else if (active && active.savedRecord) {
+      resultCode = active.savedRecord.resultCode || resultCode;
+      reasonText = active.savedRecord.errorText || active.savedRecord.errorCode || reasonText;
+      note = resultCode === 'NG'
+        ? (reasonText || (active.finishedAt ? `完成于 ${formatShortTime(active.finishedAt)}` : '测试已完成'))
+        : (active.finishedAt ? `完成于 ${formatShortTime(active.finishedAt)}` : '测试已完成');
+    } else if (state.records.length) {
+      const latest = state.records[0];
+      resultCode = latest.resultCode || resultCode;
+      reasonText = latest.errorText || latest.errorCode || reasonText;
+      note = resultCode === 'NG'
+        ? (reasonText || (latest.finishedAt ? `完成于 ${formatShortTime(latest.finishedAt)}` : note))
+        : (latest.finishedAt ? `完成于 ${formatShortTime(latest.finishedAt)}` : note);
+    }
+
+    const normalized = resultCode === 'OK' ? 'OK' : resultCode === 'NG' ? 'NG' : 'WAIT';
+    dom.resultValue.textContent = normalized;
+    dom.resultValue.className = `result-value ${normalized === 'OK' ? 'ok' : normalized === 'NG' ? 'ng' : 'wait'}`;
+    dom.resultNote.textContent = note;
+    dom.flowStatusText.textContent = normalized;
+  }
+
+  function renderFlow() {
+    const active = state.activeTest;
+    const stepCode = active && active.latestTelemetry
+      ? active.latestTelemetry.stepCode
+      : state.currentStep;
+    const flowStep = mapFlowStep(stepCode);
+    const resultCode = active && active.savedRecord
+      ? active.savedRecord.resultCode
+      : state.resultCode;
+
+    dom.flowSteps.forEach((element) => {
+      element.className = 'flow-step future';
+    });
+
+    if (flowStep === null) {
+      if (resultCode === 'OK' || resultCode === 'NG') {
+        dom.flowSteps.forEach((element) => {
+          element.className = `flow-step ${resultCode === 'OK' ? 'done-ok' : 'done-ng'}`;
+        });
+      }
+      return;
+    }
+
+    const activeIndex = FLOW_ORDER.indexOf(flowStep);
+    dom.flowSteps.forEach((element, index) => {
+      const isActive = index === activeIndex;
+      const isPast = index < activeIndex;
+      const isLast = index === FLOW_ORDER.length - 1 && flowStep === 65535;
+
+      if (isLast) {
+        element.className = `flow-step ${resultCode === 'NG' ? 'done-ng' : 'done-ok'}`;
+      } else if (isActive) {
+        element.className = 'flow-step active';
+      } else if (isPast) {
+        element.className = 'flow-step past';
+      } else {
+        element.className = 'flow-step future';
+      }
+    });
+  }
+
+  function getChartPalette() {
+    if (document.documentElement.dataset.theme === 'light') {
+      return {
+        background: '#ffffff',
+        grid: 'rgba(120,148,166,.55)',
+        text: '#183244',
+        muted: '#4a6375',
+        axis: '#8aa2b2',
+        line: '#007fae',
+        fill: 'rgba(0,127,174,.12)',
+        latest: '#091723'
+      };
+    }
+
+    return {
+      background: '#07131d',
+      grid: 'rgba(41,80,111,.48)',
+      text: 'rgba(132,160,183,.9)',
+      muted: 'rgba(132,160,183,.72)',
+      axis: 'rgba(216,221,229,.6)',
+      line: '#2cb9eb',
+      fill: 'rgba(44,185,235,.12)',
+      latest: '#d7f4ff'
+    };
+  }
+
+  function drawChart(canvas, points, unit, targetDurationMs) {
+    const context = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = { top: 14, right: 16, bottom: 18, left: 42 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const palette = getChartPalette();
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = palette.background;
+    context.fillRect(0, 0, width, height);
+
+    const safePoints = Array.isArray(points) ? points.filter((item) => Number.isFinite(item.v)) : [];
+    const maxValue = safePoints.length
+      ? Math.max(...safePoints.map((item) => item.v), 0.001)
+      : 1;
+    const roundedMax = maxValue < 1 ? Number((maxValue * 1.1).toFixed(3)) : Number((maxValue * 1.1).toFixed(2));
+
+    context.strokeStyle = palette.grid;
+    context.lineWidth = 1;
+    context.fillStyle = palette.text;
+    context.font = '10px Segoe UI';
+
+    for (let i = 0; i <= 4; i += 1) {
+      const y = padding.top + (plotHeight / 4) * i;
+      context.beginPath();
+      context.moveTo(padding.left, y);
+      context.lineTo(width - padding.right, y);
+      context.stroke();
+
+      const labelValue = roundedMax * (1 - i / 4);
+      context.fillText(formatNumber(labelValue), 2, y + 3);
+    }
+
+    if (!safePoints.length) {
+      context.fillStyle = palette.muted;
+      context.font = '12px Segoe UI';
+      context.fillText('等待测试样本', padding.left, height - 8);
+      return;
+    }
+
+    const minTime = safePoints[0].t;
+    const maxTime = safePoints[safePoints.length - 1].t;
+    const actualDurationSeconds = Math.max((maxTime - minTime) / 1000, 0);
+    const targetDurationSeconds = Number.isFinite(Number(targetDurationMs)) && Number(targetDurationMs) > 0
+      ? Number(targetDurationMs) / 1000
+      : 0;
+    const duration = Math.max(actualDurationSeconds, targetDurationSeconds, 1);
+
+    context.fillStyle = palette.text;
+    for (let i = 0; i <= 4; i += 1) {
+      const secondValue = (duration / 4) * i;
+      const x = padding.left + (plotWidth / 4) * i;
+      context.fillText(`${Math.round(secondValue)}s`, x - 6, height - 4);
+    }
+
+    context.save();
+    context.beginPath();
+    context.rect(padding.left, padding.top, plotWidth, plotHeight);
+    context.clip();
+
+    context.strokeStyle = palette.line;
+    context.lineWidth = 2;
+    context.beginPath();
+
+    safePoints.forEach((point, index) => {
+      const x = padding.left + (((point.t - minTime) / 1000) / duration) * plotWidth;
+      const y = padding.top + plotHeight - (point.v / roundedMax) * plotHeight;
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    });
+
+    context.stroke();
+
+    context.lineTo(padding.left + plotWidth, padding.top + plotHeight);
+    context.lineTo(padding.left, padding.top + plotHeight);
+    context.closePath();
+    context.fillStyle = palette.fill;
+    context.fill();
+    context.restore();
+
+    const latest = safePoints[safePoints.length - 1];
+    context.fillStyle = palette.latest;
+    context.font = 'bold 11px Consolas';
+    context.fillText(`${formatNumber(latest.v)} ${unit || ''}`.trim(), width - padding.right - 84, padding.top + 12);
+  }
+
+  function drawStageChart(canvas, points, unit, targetDurationMs, phaseLabel) {
+    const context = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = { top: 14, right: 16, bottom: 18, left: 42 };
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const palette = getChartPalette();
+    const safePoints = Array.isArray(points) ? points.filter((item) => Number.isFinite(item.v)) : [];
+    const values = safePoints.map((item) => Number(item.v));
+    const pointMinValue = values.length ? Math.min(...values) : 0;
+    const pointMaxValue = values.length ? Math.max(...values) : 1;
+    let minValue = 0;
+    let maxValue = 1;
+
+    if (pointMinValue < 0 && pointMaxValue > 0) {
+      const paddingValue = (pointMaxValue - pointMinValue) * 0.1 || 1;
+      minValue = pointMinValue - paddingValue;
+      maxValue = pointMaxValue + paddingValue;
+    } else if (pointMaxValue <= 0) {
+      const paddingValue = Math.abs(pointMinValue) * 0.1 || 1;
+      minValue = pointMinValue - paddingValue;
+      maxValue = 0;
+    } else {
+      const paddingValue = pointMaxValue * 0.1 || 1;
+      minValue = 0;
+      maxValue = pointMaxValue + paddingValue;
+    }
+
+    const valueRange = Math.max(maxValue - minValue, 0.001);
+    const targetDurationSeconds = Number.isFinite(Number(targetDurationMs)) && Number(targetDurationMs) > 0
+      ? Number(targetDurationMs) / 1000
+      : 0;
+    const axisDurationSeconds = Math.max(targetDurationSeconds, 1);
+    const getY = (value) => padding.top + ((maxValue - Number(value)) / valueRange) * plotHeight;
+    const baselineY = getY(0);
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = palette.background;
+    context.fillRect(0, 0, width, height);
+
+    context.strokeStyle = palette.grid;
+    context.lineWidth = 1;
+    context.fillStyle = palette.text;
+    context.font = '10px Segoe UI';
+
+    for (let i = 0; i <= 4; i += 1) {
+      const y = padding.top + (plotHeight / 4) * i;
+      context.beginPath();
+      context.moveTo(padding.left, y);
+      context.lineTo(width - padding.right, y);
+      context.stroke();
+
+      const labelValue = maxValue - (valueRange / 4) * i;
+      context.fillText(formatNumber(labelValue), 2, y + 3);
+    }
+
+    if (pointMinValue < 0 && pointMaxValue > 0) {
+      context.strokeStyle = palette.axis;
+      context.beginPath();
+      context.moveTo(padding.left, baselineY);
+      context.lineTo(width - padding.right, baselineY);
+      context.stroke();
+      context.strokeStyle = palette.grid;
+    }
+
+    context.fillStyle = palette.text;
+    for (let i = 0; i <= 4; i += 1) {
+      const secondValue = (axisDurationSeconds / 4) * i;
+      const x = padding.left + (plotWidth / 4) * i;
+      context.fillText(formatDurationTick(secondValue, axisDurationSeconds), x - 10, height - 4);
+    }
+
+    if (phaseLabel) {
+      context.fillStyle = palette.text;
+      context.font = '10px "Segoe UI"';
+      const labelWidth = context.measureText(phaseLabel).width;
+      const labelX = Math.max(padding.left, width - padding.right - labelWidth);
+      context.fillText(phaseLabel, labelX, 10);
+    }
+
+    if (!safePoints.length) {
+      context.fillStyle = palette.muted;
+      context.font = '12px Segoe UI';
+      context.fillText('等待测试样本', padding.left, height - 8);
+      return;
+    }
+
+    const minTime = safePoints[0].t;
+    const maxTime = safePoints[safePoints.length - 1].t;
+    const actualDurationSeconds = Math.max((maxTime - minTime) / 1000, 0);
+    const duration = Math.max(actualDurationSeconds, targetDurationSeconds, 1);
+
+    context.save();
+    context.beginPath();
+    context.rect(padding.left, padding.top, plotWidth, plotHeight);
+    context.clip();
+
+    context.strokeStyle = palette.line;
+    context.lineWidth = 2;
+    context.beginPath();
+
+    safePoints.forEach((point, index) => {
+      const x = padding.left + (((point.t - minTime) / 1000) / duration) * plotWidth;
+      const y = getY(point.v);
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    });
+
+    context.stroke();
+    context.lineTo(padding.left + plotWidth, baselineY);
+    context.lineTo(padding.left, baselineY);
+    context.closePath();
+    context.fillStyle = palette.fill;
+    context.fill();
+    context.restore();
+
+    const latest = safePoints[safePoints.length - 1];
+    context.fillStyle = palette.latest;
+    context.font = 'bold 11px Consolas';
+    context.fillText(`${formatNumber(latest.v)} ${unit || ''}`.trim(), width - padding.right - 84, padding.top + 12);
+  }
+
+  function renderCharts() {
+    const pressureDurationMs = getPressureChartDurationMs();
+    const leakDurationMs = getLeakChartDurationMs();
+    const pressureLabel = Number.isFinite(Number(pressureDurationMs)) && Number(pressureDurationMs) > 0
+      ? `充气+稳压 ${formatNumber(Number(pressureDurationMs) / 1000)}s`
+      : '充气+稳压';
+    const leakLabel = Number.isFinite(Number(leakDurationMs)) && Number(leakDurationMs) > 0
+      ? `测试 ${formatNumber(Number(leakDurationMs) / 1000)}s`
+      : '测试';
+
+    drawStageChart(dom.pressureChart, state.pressureHistory, state.pressureUnit, pressureDurationMs, pressureLabel);
+    drawStageChart(dom.leakChart, state.leakHistory, state.leakUnit, leakDurationMs, leakLabel);
+  }
+
+  function applySavedRecordMetrics(savedRecord) {
+    if (!savedRecord) {
+      return;
+    }
+
+    state.finalPressure = Number.isFinite(Number(savedRecord.finalPressure))
+      ? Number(savedRecord.finalPressure)
+      : state.finalPressure;
+    state.finalLeak = Number.isFinite(Number(savedRecord.finalLeak))
+      ? Number(savedRecord.finalLeak)
+      : state.finalLeak;
+    state.finalPressureUnit = savedRecord.pressureUnit || state.finalPressureUnit || state.pressureUnit;
+    state.finalLeakUnit = savedRecord.leakUnit || state.finalLeakUnit || state.leakUnit;
+  }
+
+  function deriveFinalMetricsFromSamples(samples) {
+    if (!Array.isArray(samples) || !samples.length) {
+      return;
+    }
+
+    const step6Samples = samples.filter((sample) => sample && sample.stepCode === 6 && Number.isFinite(Number(sample.pressure)));
+    if (step6Samples.length) {
+      const lastStep6Sample = step6Samples[step6Samples.length - 1];
+      const lastStep6Time = Number(lastStep6Sample.elapsedMs || 0);
+      const trailingWindow = step6Samples.filter((sample) => lastStep6Time - Number(sample.elapsedMs || 0) <= 1000);
+      const finalPressureSample = trailingWindow[trailingWindow.length - 1] || lastStep6Sample;
+      state.finalPressure = Number(finalPressureSample.pressure);
+      state.finalPressureUnit = finalPressureSample.pressureUnit || state.finalPressureUnit || state.pressureUnit;
+    }
+
+    const finalLeakSample = [...samples].reverse().find((sample) => sample && sample.stepCode === 65535 && Number.isFinite(Number(sample.leak)));
+    if (finalLeakSample) {
+      state.finalLeak = Number(finalLeakSample.leak);
+      state.finalLeakUnit = finalLeakSample.leakUnit || state.finalLeakUnit || state.leakUnit;
+    }
+  }
+
+  function renderRecords(records) {
+    const safeRecords = Array.isArray(records) ? records.slice(0, 20) : [];
+    dom.recordsMeta.textContent = `最近 ${safeRecords.length} 条记录`;
+    dom.recordsBody.innerHTML = safeRecords.map((record) => {
+      const pressureValue = Number.isFinite(Number(record.finalPressure)) ? record.finalPressure : record.testPressure;
+      const leakValue = record.finalLeak;
+      const resultClass = record.resultCode === 'OK' ? 'ok-text' : record.resultCode === 'NG' ? 'ng-text' : '';
+      const resultTitle = record.resultCode === 'NG' && (record.errorText || record.errorCode)
+        ? ` title="${escapeHtml(record.errorText || record.errorCode)}"`
+        : '';
+
+      return [
+        '<tr>',
+        `<td>${escapeHtml(record.sequenceCode || '-')}</td>`,
+        `<td>${escapeHtml(record.productModel || '-')}</td>`,
+        `<td>${escapeHtml(record.qrCode || '-')}</td>`,
+        `<td>${escapeHtml(formatValueWithUnit(pressureValue, record.pressureUnit || ''))}</td>`,
+        `<td>${escapeHtml(formatValueWithUnit(leakValue, record.leakUnit || ''))}</td>`,
+        `<td class="${resultClass}"${resultTitle}>${escapeHtml(record.resultCode || '-')}</td>`,
+        `<td>${escapeHtml(record.operatorName || '-')}</td>`,
+        `<td>${escapeHtml(formatShortTime(record.finishedAt || record.startedAt))}</td>`,
+        '</tr>'
+      ].join('');
+    }).join('');
+
+    if (!safeRecords.length) {
+      dom.recordsBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);font-family:Segoe UI;padding:24px 12px">暂无测试记录</td></tr>';
+      return;
+    }
+
+    if (!(state.activeTest && state.activeTest.running) && safeRecords[0]) {
+      applySavedRecordMetrics(safeRecords[0]);
+    }
+  }
+
+  function renderTodaySummary(totalCount, okCount) {
+    state.todayTotalCount = totalCount;
+    state.todayOkCount = okCount;
+    dom.todayTotal.textContent = String(totalCount);
+    dom.todayOk.textContent = String(okCount);
+    dom.todayMeta.textContent = `截至 ${formatShortTime(new Date())}`;
+  }
+
+  function renderAll() {
+    renderProgramBadge();
+    renderScan();
+    renderMetrics();
+    renderProgramTimings();
+    renderChartMeta();
+    renderFlow();
+    renderResult();
+    renderCharts();
+  }
+
+  async function loadSettings() {
+    const [productResponse, operatorResponse] = await Promise.all([
+      api('/api/settings/products'),
+      api('/api/settings/operators')
+    ]);
+
+    const products = Array.isArray(productResponse.products)
+      ? productResponse.products
+          .filter((item) => item.isActive !== false)
+          .map((item) => normalizeProductFlags(item))
+      : [];
+    const operators = Array.isArray(operatorResponse.operators) ? operatorResponse.operators.filter((item) => item.isActive !== false) : [];
+    state.products = products;
+    state.operators = operators;
+
+    dom.productSelect.innerHTML = '<option value="">请选择</option>';
+    products.forEach((product) => {
+      const option = document.createElement('option');
+      option.value = product.productModel;
+      option.textContent = product.productModel;
+      dom.productSelect.appendChild(option);
+    });
+
+    dom.operatorSelect.innerHTML = '<option value="">请选择</option>';
+    operators.forEach((operator) => {
+      const option = document.createElement('option');
+      option.value = operator.name;
+      option.textContent = operator.name;
+      dom.operatorSelect.appendChild(option);
+    });
+
+    if (products.length && !dom.productSelect.value) {
+      dom.productSelect.value = products[0].productModel;
+    }
+
+    if (operators.length && !dom.operatorSelect.value) {
+      dom.operatorSelect.value = operators[0].name;
+    }
+  }
+
+  async function syncContext() {
+    const productModel = dom.productSelect.value;
+    if (!productModel) {
+      return;
+    }
+
+    try {
+      const response = await api('/api/test/context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productModel,
+          operatorName: dom.operatorSelect.value || undefined
+        })
+      });
+
+      if (Number.isInteger(Number(response.currentProgram))) {
+        state.currentProgram = Number(response.currentProgram);
+        renderProgramBadge();
+      }
+    } catch (error) {
+      showError(`同步测试上下文失败：${error.message}`);
+    }
+  }
+
+  async function loadProgramTimings(force) {
+    if (!state.connected) {
+      if (force) {
+        state.programTimings = null;
+        state.programTimingsKey = null;
+        renderProgramTimings();
+        renderChartMeta();
+        renderCharts();
+      }
+      return;
+    }
+
+    const programNumber = resolveProgramNumberForTimings();
+    if (!Number.isInteger(programNumber) || programNumber < 1) {
+      state.programTimings = null;
+      state.programTimingsKey = null;
+      renderProgramTimings();
+      renderChartMeta();
+      renderCharts();
+      return;
+    }
+
+    const timingKey = String(programNumber);
+    if (!force && Date.now() < state.programTimingRetryAt) {
+      return;
+    }
+
+    if (!force && (state.programTimingLoading || state.programTimingsKey === timingKey)) {
+      return;
+    }
+
+    state.programTimingLoading = true;
+    try {
+      const payload = await api(`/api/program-timings?programNumber=${encodeURIComponent(programNumber)}`);
+      state.programTimings = payload.timings || null;
+      state.programTimingsKey = timingKey;
+      state.programTimingRetryAt = 0;
+      renderProgramTimings();
+      renderChartMeta();
+      renderCharts();
+    } catch (error) {
+      state.programTimingRetryAt = Date.now() + 30000;
+      if (force) {
+        state.programTimings = null;
+        state.programTimingsKey = null;
+        renderProgramTimings();
+        renderChartMeta();
+        renderCharts();
+      }
+    } finally {
+      state.programTimingLoading = false;
+    }
+  }
+
+  function scheduleContextSync() {
+    clearTimeout(state.syncTimer);
+    state.syncTimer = window.setTimeout(syncContext, 180);
+  }
+
+  async function pollStatus() {
+    try {
+      const payload = await api('/api/status');
+      const telemetry = payload.telemetry || {};
+
+      setAteqStatus(payload.connected);
+      state.currentProgram = payload.currentJob || null;
+      state.currentStep = payload.currentStep ?? null;
+      state.resultCode = payload.resultCode || 'UNKNOWN';
+      state.errorCode = payload.errorCode || null;
+      state.errorText = payload.errorText || null;
+      state.pressure = Number.isFinite(Number(telemetry.pressure)) ? Number(telemetry.pressure) : null;
+      state.leak = Number.isFinite(Number(telemetry.leak)) ? Number(telemetry.leak) : null;
+      state.pressureUnit = telemetry.pressureUnit || state.pressureUnit || 'kPa';
+      state.leakUnit = telemetry.leakUnit || state.leakUnit || 'Pa';
+
+      renderAll();
+      loadProgramTimings(false).catch(() => {});
+    } catch (error) {
+      setAteqStatus(false);
+      state.currentProgram = null;
+      state.currentStep = null;
+      state.resultCode = 'UNKNOWN';
+      state.errorCode = error.message;
+      state.errorText = error.message;
+      state.programTimings = null;
+      state.programTimingsKey = null;
+      renderAll();
+    }
+  }
+
+  async function pollScanner() {
+    try {
+      const payload = await api('/api/scanner/latest');
+      const previousScan = state.latestScan;
+      state.scannerConnected = Boolean(payload.connected);
+      state.latestScan = payload.latestScan || null;
+      renderScan();
+      maybeAlertScanMismatch(previousScan, state.latestScan);
+    } catch (error) {
+      state.scannerConnected = false;
+      renderScan();
+    }
+  }
+
+  async function pollActiveTest() {
+    try {
+      const payload = await api('/api/test/active');
+      const activeTest = payload && payload.activeTest ? payload.activeTest : null;
+      state.activeTest = activeTest;
+
+      if (activeTest && activeTest.latestTelemetry) {
+        state.currentStep = activeTest.latestTelemetry.stepCode ?? state.currentStep;
+      }
+
+      const samples = activeTest && Array.isArray(activeTest.samples) ? activeTest.samples : [];
+      state.pressureHistory = [];
+      state.leakHistory = [];
+
+      if (samples.length) {
+        state.pressureHistory = samples
+          .filter((sample) => sample && Number.isFinite(Number(sample.pressure)) && (sample.stepCode === 4 || sample.stepCode === 5))
+          .map((sample) => ({
+            t: Date.parse(sample.sampledAt) || Date.now(),
+            v: Number(sample.pressure)
+          }));
+
+        state.leakHistory = samples
+          .filter((sample) => sample && Number.isFinite(Number(sample.leak)) && (sample.stepCode === 6 || sample.stepCode === 7 || sample.stepCode === 65535))
+          .map((sample) => ({
+            t: Date.parse(sample.sampledAt) || Date.now(),
+            v: Number(sample.leak)
+          }));
+
+        deriveFinalMetricsFromSamples(samples);
+      }
+
+      applySavedRecordMetrics(activeTest && activeTest.savedRecord);
+      if (activeTest && activeTest.savedRecord) {
+        state.latestScan = null;
+        state.lastScanAlertKey = null;
+      }
+      setAteqStatus(state.connected);
+      renderAll();
+
+      if (activeTest && activeTest.savedRecord) {
+        await Promise.allSettled([pollScanner(), pollRecords(), pollTodaySummary()]);
+      }
+    } catch (error) {
+      state.activeTest = null;
+      renderAll();
+    }
+  }
+
+  async function pollRecords() {
+    try {
+      const payload = await api('/api/tests/latest');
+      const records = Array.isArray(payload.records) ? payload.records : [];
+      state.records = records;
+      renderRecords(records);
+      renderMetrics();
+      renderResult();
+    } catch (error) {
+      showError(`读取最近记录失败：${error.message}`);
+    }
+  }
+
+  async function pollTodaySummary() {
+    try {
+      const range = getTodayRange();
+      const [allResponse, okResponse] = await Promise.all([
+        api(`/api/tests/query?startTime=${encodeURIComponent(range.startTime)}&endTime=${encodeURIComponent(range.endTime)}&resultCode=ALL&page=1&pageSize=1`),
+        api(`/api/tests/query?startTime=${encodeURIComponent(range.startTime)}&endTime=${encodeURIComponent(range.endTime)}&resultCode=OK&page=1&pageSize=1`)
+      ]);
+
+      renderTodaySummary(Number(allResponse.total || 0), Number(okResponse.total || 0));
+    } catch (error) {
+      renderTodaySummary(0, 0);
+    }
+  }
+
+  async function handleStart() {
+    const productModel = dom.productSelect.value;
+    if (!productModel) {
+      showError('Please select a product model.');
+      return;
+    }
+
+    const selectedProduct = state.products.find((item) => item.productModel === productModel) || null;
+    const latestScanText = String(state.latestScan && state.latestScan.rawText ? state.latestScan.rawText : '').trim();
+    const requireScanRecord = Boolean(selectedProduct && selectedProduct.scanConfirmEnabled !== false);
+    const requireScanMatch = Boolean(selectedProduct && selectedProduct.scanMatchEnabled === true);
+
+    if ((requireScanRecord || requireScanMatch) && !latestScanText) {
+      const message = requireScanMatch
+        ? `Product ${selectedProduct ? selectedProduct.productModel : '-'} requires a matching scan before start.`
+        : `Product ${selectedProduct ? selectedProduct.productModel : '-'} requires a scan record before start.`;
+      window.alert(message);
+      showError(message);
+      return;
+    }
+
+    if (requireScanMatch && !doesScanMatchSelectedProduct(selectedProduct)) {
+      const message = `Scan does not contain the required keyword: ${selectedProduct && selectedProduct.qrKeyword ? selectedProduct.qrKeyword : '-'}`;
+      window.alert(message);
+      showError(message);
+      return;
+    }
+
+    const skipProgramSelect = Boolean(
+      selectedProduct &&
+      Number.isFinite(Number(selectedProduct.ateqProgramNo)) &&
+      Number(selectedProduct.ateqProgramNo) === Number(state.currentProgram)
+    );
+
+    const originalText = dom.btnStart.textContent;
+    dom.btnStart.disabled = true;
+    dom.btnStart.textContent = '启动中...';
+
+    try {
+      await api('/api/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startMode: 'manual',
+          productModel,
+          skipProgramSelect,
+          operatorName: dom.operatorSelect.value || undefined
+        })
+      });
+
+      state.activeTest = {
+        running: false,
+        stage: 'armed',
+        message: 'Waiting for step 4',
+        latestTelemetry: null,
+        samples: [],
+        savedRecord: null
+      };
+      state.finalPressure = null;
+      state.finalPressureUnit = null;
+      state.finalLeak = null;
+      state.finalLeakUnit = null;
+      state.pressureHistory = [];
+      state.leakHistory = [];
+      renderAll();
+      await pollActiveTest();
+    } catch (error) {
+      showError(`启动测试失败：${error.message}`);
+    } finally {
+      dom.btnStart.textContent = originalText;
+      dom.btnStart.disabled = !state.connected || isStartLocked();
+    }
+  }
+
+  async function handleReset() {
+    dom.btnReset.disabled = true;
+    try {
+      const payload = await api('/api/reset', { method: 'POST' });
+      if (payload && payload.activeTest) {
+        state.activeTest = payload.activeTest;
+      }
+      state.pressureHistory = [];
+      state.leakHistory = [];
+      await Promise.allSettled([pollStatus(), pollActiveTest(), pollScanner()]);
+    } catch (error) {
+      showError(`复位失败：${error.message}`);
+    } finally {
+      dom.btnReset.disabled = !state.connected;
+    }
+  }
+
+  function installPollers() {
+    state.statusPoller = window.setInterval(pollStatus, 1000);
+    state.scannerPoller = window.setInterval(pollScanner, 1000);
+    state.activePoller = window.setInterval(pollActiveTest, 500);
+    state.recordsPoller = window.setInterval(pollRecords, 5000);
+    state.todayPoller = window.setInterval(pollTodaySummary, 15000);
+  }
+
+  async function init() {
+    try {
+      await loadSettings();
+      await syncContext();
+    } catch (error) {
+      showError(`初始化页面失败：${error.message}`);
+    }
+
+    await Promise.allSettled([
+      pollStatus(),
+      pollScanner(),
+      pollActiveTest(),
+      pollRecords(),
+      pollTodaySummary()
+    ]);
+
+    renderAll();
+    installPollers();
+  }
+
+  dom.productSelect.addEventListener('change', () => {
+    renderProgramBadge();
+    renderScan();
+    state.programTimings = null;
+    state.programTimingsKey = null;
+    state.programTimingRetryAt = 0;
+    scheduleContextSync();
+    renderProgramTimings();
+    renderChartMeta();
+    renderCharts();
+    loadProgramTimings(true).catch(() => {});
+  });
+
+  dom.operatorSelect.addEventListener('change', () => {
+    scheduleContextSync();
+  });
+
+  dom.btnStart.addEventListener('click', handleStart);
+  dom.btnReset.addEventListener('click', handleReset);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      Promise.allSettled([loadSettings(), pollStatus(), pollScanner(), pollActiveTest(), pollRecords(), pollTodaySummary()])
+        .then(() => syncContext().catch(() => {}));
+    }
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (event.key !== SETTINGS_SYNC_KEY) {
+      return;
+    }
+
+    loadSettings()
+      .then(() => syncContext().catch(() => {}))
+      .catch(() => {});
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

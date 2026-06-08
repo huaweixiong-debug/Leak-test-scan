@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统设置</title>
+<script src="/appearance.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<style>
+  :root{
+    --bg:#09131d;
+    --panel:#102131;
+    --panel-2:#0b1824;
+    --border:#1f3a52;
+    --border-strong:#29506f;
+    --text:#ecf4fb;
+    --muted:#84a0b7;
+    --accent:#24a9d7;
+    --shadow:0 12px 30px rgba(0,0,0,.22);
+    --good:#34c67a;
+    --bad:#ff5a5a;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at top left, rgba(34,94,138,.22), transparent 28%),
+      linear-gradient(180deg, #09111a 0%, #08131d 100%);
+    color:var(--text);
+    font-family:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif;
+  }
+
+  .page{
+    max-width:1260px;
+    margin:0 auto;
+    padding:14px;
+    display:grid;
+    gap:12px;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, rgba(17,34,50,.96) 0%, rgba(13,28,42,.98) 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    min-width:0;
+  }
+
+  .header{
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .title h1{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:.4px;
+  }
+
+  .links{
+    margin-left:auto;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  .link{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:12px;
+  }
+
+  .link:hover{
+    color:#d5f3ff;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0, 2fr) minmax(320px, 1fr);
+    gap:12px;
+    min-height:0;
+    align-items:stretch;
+  }
+
+  .section{
+    padding:14px 16px 16px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    gap:12px;
+    min-height:0;
+    height:100%;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    min-height:38px;
+  }
+
+  .section-head h2{
+    margin:0;
+    font-size:15px;
+    color:var(--accent);
+  }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+  }
+
+  .btn{
+    height:38px;
+    padding:0 16px;
+    border:none;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+
+  .btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+  }
+
+  .btn:active:not(:disabled){
+    transform:translateY(1px);
+  }
+
+  .btn.primary{
+    color:#fff;
+    background:linear-gradient(180deg, #2fb6e1 0%, #1e9fc9 100%);
+  }
+
+  .btn.secondary{
+    color:var(--text);
+    background:transparent;
+    border:1px solid var(--border-strong);
+  }
+
+  .table-wrap{
+    overflow:auto;
+    border-radius:14px;
+    border:1px solid rgba(31,58,82,.65);
+    background:rgba(7,17,27,.38);
+  }
+
+  .product-table-wrap{
+    min-height:540px;
+    max-height:calc(100vh - 170px);
+  }
+
+  .operator-table-wrap{
+    min-height:540px;
+    max-height:calc(100vh - 170px);
+  }
+
+  .appearance-panel{
+    padding:14px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  .appearance-title{
+    display:grid;
+    gap:4px;
+  }
+
+  .appearance-title h2{
+    margin:0;
+    font-size:15px;
+    color:var(--accent);
+  }
+
+  .appearance-title p{
+    margin:0;
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .appearance-control{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .appearance-control label{
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .select{
+    height:38px;
+    min-width:150px;
+    padding:0 12px;
+    border-radius:10px;
+    border:1px solid var(--border-strong);
+    background:#07121c;
+    color:var(--text);
+    font-size:13px;
+    outline:none;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+  }
+
+  thead th{
+    position:sticky;
+    top:0;
+    z-index:1;
+    background:#0f2233;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid rgba(31,58,82,.85);
+    white-space:nowrap;
+  }
+
+  tbody td{
+    padding:8px 10px;
+    border-bottom:1px solid rgba(31,58,82,.45);
+    vertical-align:middle;
+  }
+
+  tbody tr:hover{
+    background:rgba(255,255,255,.03);
+  }
+
+  .input{
+    width:100%;
+    height:36px;
+    padding:0 12px;
+    border-radius:10px;
+    border:1px solid var(--border-strong);
+    background:#07121c;
+    color:var(--text);
+    font-size:13px;
+    outline:none;
+  }
+
+  .input.mono{
+    font-family:Consolas,"SFMono-Regular",monospace;
+  }
+
+  .checkbox{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  .checkbox input{
+    width:16px;
+    height:16px;
+  }
+
+  .danger-btn{
+    width:36px;
+    height:36px;
+    border:none;
+    border-radius:10px;
+    background:rgba(255,90,90,.12);
+    color:#ffd5d5;
+    cursor:pointer;
+    font-weight:800;
+  }
+
+  .danger-btn:hover{
+    background:rgba(255,90,90,.22);
+  }
+
+  .table-empty{
+    text-align:center;
+    color:var(--muted);
+    padding:24px 12px;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    max-width:min(760px, calc(100vw - 40px));
+    padding:12px 18px;
+    border-radius:14px;
+    font-size:13px;
+    box-shadow:0 16px 30px rgba(0,0,0,.28);
+    display:none;
+    z-index:20;
+  }
+
+  .toast.ok{
+    display:block;
+    border:1px solid rgba(52,198,122,.35);
+    background:rgba(15,57,35,.94);
+    color:#d8ffe9;
+  }
+
+  .toast.err{
+    display:block;
+    border:1px solid rgba(255,90,90,.35);
+    background:rgba(50,12,18,.94);
+    color:#ffd7d7;
+  }
+
+  @media (max-width: 1100px){
+    .layout{
+      grid-template-columns:1fr;
+    }
+
+    .product-table-wrap,
+    .operator-table-wrap{
+      max-height:none;
+      min-height:0;
+    }
+  }
+
+  @media (max-width: 760px){
+    .page{
+      padding:10px;
+    }
+
+    .links{
+      margin-left:0;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="panel header">
+      <div class="title">
+        <h1>系统设置</h1>
+      </div>
+      <div class="links">
+        <a class="link" href="/">主测试页</a>
+        <a class="link" href="/query.html">数据查询</a>
+        <a class="link" href="/comm-config.html">通讯配置</a>
+      </div>
+    </header>
+
+    <section class="panel appearance-panel">
+      <div class="appearance-title">
+        <h2>Appearance</h2>
+        <p>选择界面显示模式，System 会跟随操作系统。</p>
+      </div>
+      <div class="appearance-control">
+        <label for="appearance-mode">模式</label>
+        <select class="select" id="appearance-mode">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="panel section">
+        <div class="section-head">
+          <h2>产品设置</h2>
+          <div class="toolbar">
+            <button class="btn secondary" id="btn-add-product" type="button">新增产品</button>
+            <button class="btn primary" id="btn-save-products" type="button">保存产品</button>
+          </div>
+        </div>
+
+        <div class="table-wrap product-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:150px">产品型号</th>
+                <th style="width:120px">程序号</th>
+                <th style="min-width:180px">二维码关键词</th>
+                <th style="width:92px;text-align:center">扫码记录</th>
+                <th style="width:92px;text-align:center">扫码匹配</th>
+                <th style="width:92px;text-align:center">扫码启动</th>
+                <th style="width:76px;text-align:center">启用</th>
+                <th style="width:70px;text-align:center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="product-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <div class="section-head">
+          <h2>操作员设置</h2>
+          <div class="toolbar">
+            <button class="btn secondary" id="btn-add-operator" type="button">新增操作员</button>
+            <button class="btn primary" id="btn-save-operators" type="button">保存操作员</button>
+          </div>
+        </div>
+
+        <div class="table-wrap operator-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th style="width:76px;text-align:center">启用</th>
+                <th style="width:70px;text-align:center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="operator-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const SETTINGS_SYNC_KEY = 'ateq-settings-updated';
+  const PRODUCT_SCAN_FLAGS_KEY = 'ateq-product-scan-flags-v1';
+
+  const state = {
+    products: [],
+    operators: []
+  };
+
+  const dom = {
+    productBody: document.getElementById('product-body'),
+    operatorBody: document.getElementById('operator-body'),
+    appearanceMode: document.getElementById('appearance-mode'),
+    btnAddProduct: document.getElementById('btn-add-product'),
+    btnSaveProducts: document.getElementById('btn-save-products'),
+    btnAddOperator: document.getElementById('btn-add-operator'),
+    btnSaveOperators: document.getElementById('btn-save-operators'),
+    toast: document.getElementById('toast')
+  };
+
+  function showToast(type, message) {
+    dom.toast.className = `toast ${type}`;
+    dom.toast.textContent = message;
+    dom.toast.style.display = 'block';
+    clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => {
+      dom.toast.className = 'toast';
+      dom.toast.style.display = 'none';
+    }, 4200);
+  }
+
+  function loadAppearanceMode() {
+    dom.appearanceMode.value = window.Appearance ? window.Appearance.getMode() : 'system';
+  }
+
+  function saveAppearanceMode() {
+    const mode = dom.appearanceMode.value || 'system';
+    if (window.Appearance) {
+      window.Appearance.setMode(mode);
+    }
+    emitSettingsUpdated('appearance');
+    showToast('ok', `Appearance 已切换为 ${mode}.`);
+  }
+
+  async function api(url, options) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      ...options
+    });
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const validationMessage = payload && Array.isArray(payload.errors) && payload.errors.length
+        ? payload.errors.map((item) => `${item.field}: ${item.message}`).join('；')
+        : null;
+      throw new Error(validationMessage || (payload && payload.message) || `${url} ${response.status}`);
+    }
+
+    return payload;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normalizeKey(value) {
+    return String(value || '').trim().toUpperCase();
+  }
+
+  function getProductScanFlagKey(product) {
+    const id = String(product && product.id ? product.id : '').trim();
+    if (id) {
+      return `id:${id}`;
+    }
+    return `model:${normalizeKey(product && product.productModel ? product.productModel : '')}`;
+  }
+
+  function loadProductScanFlags() {
+    try {
+      const raw = localStorage.getItem(PRODUCT_SCAN_FLAGS_KEY);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      console.warn('Failed to load product scan flags', error);
+      return {};
+    }
+  }
+
+  function saveProductScanFlags(flagsMap) {
+    try {
+      localStorage.setItem(PRODUCT_SCAN_FLAGS_KEY, JSON.stringify(flagsMap || {}));
+    } catch (error) {
+      console.warn('Failed to save product scan flags', error);
+    }
+  }
+
+  function mergeProductScanFlags(products) {
+    const flagsMap = loadProductScanFlags();
+    return products.map((product) => {
+      const stored = flagsMap[getProductScanFlagKey(product)] || null;
+      return {
+        ...product,
+        scanConfirmEnabled: typeof product.scanConfirmEnabled === 'boolean'
+          ? product.scanConfirmEnabled
+          : (stored && typeof stored.scanConfirmEnabled === 'boolean' ? stored.scanConfirmEnabled : true),
+        scanMatchEnabled: typeof product.scanMatchEnabled === 'boolean'
+          ? product.scanMatchEnabled
+          : (stored && typeof stored.scanMatchEnabled === 'boolean' ? stored.scanMatchEnabled : false),
+        scanAutoStartEnabled: typeof product.scanAutoStartEnabled === 'boolean'
+          ? product.scanAutoStartEnabled
+          : (stored && typeof stored.scanAutoStartEnabled === 'boolean' ? stored.scanAutoStartEnabled : false)
+      };
+    });
+  }
+
+  function persistCurrentProductScanFlags(products) {
+    const flagsMap = loadProductScanFlags();
+    for (const product of products) {
+      flagsMap[getProductScanFlagKey(product)] = {
+        scanConfirmEnabled: product.scanConfirmEnabled !== false,
+        scanMatchEnabled: product.scanMatchEnabled === true,
+        scanAutoStartEnabled: product.scanAutoStartEnabled === true
+      };
+    }
+    saveProductScanFlags(flagsMap);
+  }
+
+  function makeProduct() {
+    return {
+      id: `product-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      productModel: '',
+      ateqProgramNo: 1,
+      qrKeyword: '',
+      isActive: true,
+      scanConfirmEnabled: true,
+      scanMatchEnabled: false,
+      scanAutoStartEnabled: false
+    };
+  }
+
+  function makeOperator() {
+    return {
+      id: `operator-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: '',
+      isActive: true
+    };
+  }
+
+  function emitSettingsUpdated(scope) {
+    try {
+      localStorage.setItem(SETTINGS_SYNC_KEY, JSON.stringify({
+        scope,
+        at: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.warn('Failed to emit settings sync event', error);
+    }
+  }
+
+  function renderProducts() {
+    if (!state.products.length) {
+      dom.productBody.innerHTML = '<tr><td colspan="8" class="table-empty">暂无产品，点击“新增产品”开始配置。</td></tr>';
+      return;
+    }
+
+    dom.productBody.innerHTML = state.products.map((product, index) => [
+      '<tr>',
+      `<td><input class="input" data-kind="product" data-index="${index}" data-field="productModel" value="${escapeHtml(product.productModel)}" placeholder="例如 HB11"></td>`,
+      `<td><input class="input mono" data-kind="product" data-index="${index}" data-field="ateqProgramNo" type="number" min="1" max="255" value="${escapeHtml(product.ateqProgramNo)}"></td>`,
+      `<td><input class="input" data-kind="product" data-index="${index}" data-field="qrKeyword" value="${escapeHtml(product.qrKeyword)}" placeholder="扫码匹配关键词"></td>`,
+      `<td><div class="checkbox"><input data-kind="product" data-index="${index}" data-field="scanConfirmEnabled" type="checkbox" ${product.scanConfirmEnabled !== false ? 'checked' : ''}></div></td>`,
+      `<td><div class="checkbox"><input data-kind="product" data-index="${index}" data-field="scanMatchEnabled" type="checkbox" ${product.scanMatchEnabled === true ? 'checked' : ''}></div></td>`,
+      `<td><div class="checkbox"><input data-kind="product" data-index="${index}" data-field="scanAutoStartEnabled" type="checkbox" ${product.scanAutoStartEnabled === true ? 'checked' : ''}></div></td>`,
+      `<td><div class="checkbox"><input data-kind="product" data-index="${index}" data-field="isActive" type="checkbox" ${product.isActive !== false ? 'checked' : ''}></div></td>`,
+      `<td style="text-align:center"><button class="danger-btn" data-remove-product="${index}" type="button">×</button></td>`,
+      '</tr>'
+    ].join('')).join('');
+
+    bindProductEvents();
+  }
+
+  function renderOperators() {
+    if (!state.operators.length) {
+      dom.operatorBody.innerHTML = '<tr><td colspan="3" class="table-empty">暂无操作员，点击“新增操作员”开始配置。</td></tr>';
+      return;
+    }
+
+    dom.operatorBody.innerHTML = state.operators.map((operator, index) => [
+      '<tr>',
+      `<td><input class="input" data-kind="operator" data-index="${index}" data-field="name" value="${escapeHtml(operator.name)}" placeholder="请输入姓名"></td>`,
+      `<td><div class="checkbox"><input data-kind="operator" data-index="${index}" data-field="isActive" type="checkbox" ${operator.isActive !== false ? 'checked' : ''}></div></td>`,
+      `<td style="text-align:center"><button class="danger-btn" data-remove-operator="${index}" type="button">×</button></td>`,
+      '</tr>'
+    ].join('')).join('');
+
+    bindOperatorEvents();
+  }
+
+  function bindProductEvents() {
+    dom.productBody.querySelectorAll('[data-remove-product]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.products.splice(Number(button.dataset.removeProduct), 1);
+        renderProducts();
+      });
+    });
+
+    dom.productBody.querySelectorAll('[data-kind="product"]').forEach((field) => {
+      const handler = field.type === 'checkbox' ? 'change' : 'input';
+      field.addEventListener(handler, () => {
+        const index = Number(field.dataset.index);
+        const key = field.dataset.field;
+        if (!state.products[index]) {
+          return;
+        }
+
+        if (key === 'isActive' || key === 'scanConfirmEnabled' || key === 'scanMatchEnabled' || key === 'scanAutoStartEnabled') {
+          state.products[index][key] = field.checked;
+          if (key === 'scanAutoStartEnabled' && field.checked) {
+            state.products[index].scanConfirmEnabled = true;
+            renderProducts();
+            return;
+          }
+          if (key === 'scanMatchEnabled') {
+            if (field.checked) {
+              state.products[index].scanConfirmEnabled = true;
+            } else {
+              state.products[index].scanAutoStartEnabled = false;
+            }
+            renderProducts();
+            return;
+          }
+          if (key === 'scanConfirmEnabled' && !field.checked) {
+            state.products[index].scanMatchEnabled = false;
+            state.products[index].scanAutoStartEnabled = false;
+            renderProducts();
+            return;
+          }
+        } else if (key === 'ateqProgramNo') {
+          state.products[index][key] = Number(field.value || 1);
+        } else {
+          state.products[index][key] = field.value;
+        }
+      });
+    });
+  }
+
+  function bindOperatorEvents() {
+    dom.operatorBody.querySelectorAll('[data-remove-operator]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.operators.splice(Number(button.dataset.removeOperator), 1);
+        renderOperators();
+      });
+    });
+
+    dom.operatorBody.querySelectorAll('[data-kind="operator"]').forEach((field) => {
+      const handler = field.type === 'checkbox' ? 'change' : 'input';
+      field.addEventListener(handler, () => {
+        const index = Number(field.dataset.index);
+        const key = field.dataset.field;
+        if (!state.operators[index]) {
+          return;
+        }
+
+        state.operators[index][key] = key === 'isActive' ? field.checked : field.value;
+      });
+    });
+  }
+
+  function normalizeProductsForSave() {
+    return state.products.map((product) => ({
+      id: product.id,
+      productModel: String(product.productModel || '').trim(),
+      ateqProgramNo: Number(product.ateqProgramNo || 1),
+      qrKeyword: String(product.qrKeyword || '').trim(),
+      isActive: product.isActive !== false,
+      scanConfirmEnabled: product.scanConfirmEnabled !== false,
+      scanMatchEnabled: product.scanMatchEnabled === true,
+      scanAutoStartEnabled: product.scanAutoStartEnabled === true
+    }));
+  }
+
+  function normalizeOperatorsForSave() {
+    return state.operators.map((operator) => ({
+      id: operator.id,
+      name: String(operator.name || '').trim(),
+      isActive: operator.isActive !== false
+    }));
+  }
+
+  function assertUnique(records, fieldName, label) {
+    const seen = new Set();
+    for (const record of records) {
+      const key = normalizeKey(record[fieldName]);
+      if (!key) {
+        continue;
+      }
+      if (seen.has(key)) {
+        throw new Error(`${label} 存在重复值，请先处理后再保存`);
+      }
+      seen.add(key);
+    }
+  }
+
+  function validateProducts(products) {
+    if (!products.length) {
+      throw new Error('请至少保留一条产品记录');
+    }
+
+    products.forEach((product, index) => {
+      const rowNo = index + 1;
+      if (!product.productModel) {
+        throw new Error(`第 ${rowNo} 行产品型号不能为空`);
+      }
+      if (!product.qrKeyword) {
+        throw new Error(`第 ${rowNo} 行二维码关键词不能为空`);
+      }
+      if (!Number.isInteger(product.ateqProgramNo) || product.ateqProgramNo < 1 || product.ateqProgramNo > 255) {
+        throw new Error(`第 ${rowNo} 行程序号必须在 1-255 之间`);
+      }
+    });
+
+    assertUnique(products, 'productModel', '产品型号');
+    assertUnique(products, 'qrKeyword', '二维码关键词');
+    assertUnique(products, 'ateqProgramNo', '程序号');
+  }
+
+  function validateOperators(operators) {
+    if (!operators.length) {
+      throw new Error('请至少保留一条操作员记录');
+    }
+
+    operators.forEach((operator, index) => {
+      if (!operator.name) {
+        throw new Error(`第 ${index + 1} 行操作员姓名不能为空`);
+      }
+    });
+
+    assertUnique(operators, 'name', '操作员姓名');
+  }
+
+  async function loadProducts() {
+    const response = await api('/api/settings/products');
+    state.products = Array.isArray(response.products)
+      ? mergeProductScanFlags(response.products)
+      : [];
+    persistCurrentProductScanFlags(state.products);
+    renderProducts();
+  }
+
+  async function loadOperators() {
+    const response = await api('/api/settings/operators');
+    state.operators = Array.isArray(response.operators) ? response.operators : [];
+    renderOperators();
+  }
+
+  async function saveProducts() {
+    const products = normalizeProductsForSave();
+    dom.btnSaveProducts.disabled = true;
+    try {
+      validateProducts(products);
+      const response = await api('/api/settings/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products })
+      });
+      state.products = Array.isArray(response.products)
+        ? response.products.map((item, index) => ({
+            ...item,
+            scanConfirmEnabled: typeof item.scanConfirmEnabled === 'boolean'
+              ? item.scanConfirmEnabled
+              : (products[index] ? products[index].scanConfirmEnabled : true),
+            scanMatchEnabled: typeof item.scanMatchEnabled === 'boolean'
+              ? item.scanMatchEnabled
+              : (products[index] ? products[index].scanMatchEnabled : false),
+            scanAutoStartEnabled: typeof item.scanAutoStartEnabled === 'boolean'
+              ? item.scanAutoStartEnabled
+              : (products[index] ? products[index].scanAutoStartEnabled : false)
+          }))
+        : products;
+      persistCurrentProductScanFlags(state.products);
+      renderProducts();
+      emitSettingsUpdated('products');
+      showToast('ok', `产品已保存，共 ${state.products.length} 条。`);
+    } catch (error) {
+      showToast('err', `保存产品失败：${error.message}`);
+    } finally {
+      dom.btnSaveProducts.disabled = false;
+    }
+  }
+
+  async function saveOperators() {
+    const operators = normalizeOperatorsForSave();
+    dom.btnSaveOperators.disabled = true;
+    try {
+      validateOperators(operators);
+      const response = await api('/api/settings/operators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operators })
+      });
+      state.operators = Array.isArray(response.operators) ? response.operators : operators;
+      renderOperators();
+      emitSettingsUpdated('operators');
+      showToast('ok', `操作员已保存，共 ${state.operators.length} 条。`);
+    } catch (error) {
+      showToast('err', `保存操作员失败：${error.message}`);
+    } finally {
+      dom.btnSaveOperators.disabled = false;
+    }
+  }
+
+  dom.btnAddProduct.addEventListener('click', () => {
+    state.products.push(makeProduct());
+    renderProducts();
+  });
+
+  dom.btnAddOperator.addEventListener('click', () => {
+    state.operators.push(makeOperator());
+    renderOperators();
+  });
+
+  dom.btnSaveProducts.addEventListener('click', saveProducts);
+  dom.btnSaveOperators.addEventListener('click', saveOperators);
+  dom.appearanceMode.addEventListener('change', saveAppearanceMode);
+
+  async function init() {
+    loadAppearanceMode();
+    try {
+      await Promise.all([loadProducts(), loadOperators()]);
+    } catch (error) {
+      showToast('err', `初始化页面失败：${error.message}`);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef4f8;
+  --panel: #ffffff;
+  --panel-2: #f6fafc;
+  --border: #cfdce7;
+  --border-strong: #a9bfce;
+  --text: #091723;
+  --muted: #2f4657;
+  --accent: #006f96;
+  --accent-soft: rgba(8, 127, 168, 0.13);
+  --good: #167c49;
+  --good-soft: rgba(22, 124, 73, 0.12);
+  --bad: #b83a3a;
+  --bad-soft: rgba(184, 58, 58, 0.12);
+  --warn: #6e5a11;
+  --shadow: 0 10px 28px rgba(34, 62, 82, 0.14);
+}
+
+:root[data-theme="light"] body,
+:root[data-theme="light"] html,
+:root[data-theme="light"] html body {
+  background:
+    radial-gradient(circle at top left, rgba(8, 127, 168, 0.13), transparent 30%),
+    linear-gradient(180deg, #f8fbfd 0%, #e9f1f6 100%) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 251, 253, 0.98) 100%) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .table-wrap,
+:root[data-theme="light"] .chart-card,
+:root[data-theme="light"] .metric-card,
+:root[data-theme="light"] .result-card,
+:root[data-theme="light"] .mini-card,
+:root[data-theme="light"] .today-card,
+:root[data-theme="light"] .summary-card,
+:root[data-theme="light"] .detail-card,
+:root[data-theme="light"] .detail-chart-card {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="light"] .scan-payload,
+:root[data-theme="light"] .chart-canvas,
+:root[data-theme="light"] .detail-canvas,
+:root[data-theme="light"] .detail-canvas-wrap,
+:root[data-theme="light"] .preset,
+:root[data-theme="light"] .flow-note,
+:root[data-theme="light"] .result-note,
+:root[data-theme="light"] .status-chip,
+:root[data-theme="light"] .badge,
+:root[data-theme="light"] .header-side .badge,
+:root[data-theme="light"] .scan-match-badge,
+:root[data-theme="light"] .scan-match-badge.neutral,
+:root[data-theme="light"] pre,
+:root[data-theme="light"] code,
+:root[data-theme="light"] .scan-display,
+:root[data-theme="light"] .scan-history-list {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme="light"] thead th {
+  background: #dfeaf1 !important;
+  color: #183244 !important;
+}
+
+:root[data-theme="light"] tbody td,
+:root[data-theme="light"] td,
+:root[data-theme="light"] th,
+:root[data-theme="light"] .detail-card-value,
+:root[data-theme="light"] .metric-value,
+:root[data-theme="light"] .result-value,
+:root[data-theme="light"] .mini-value,
+:root[data-theme="light"] .today-value,
+:root[data-theme="light"] .step-val,
+:root[data-theme="light"] .step-val2,
+:root[data-theme="light"] .scan-value,
+:root[data-theme="light"] .scan-text,
+:root[data-theme="light"] .scan-empty,
+:root[data-theme="light"] .scan-counter,
+:root[data-theme="light"] .scan-history,
+:root[data-theme="light"] .scan-history-item,
+:root[data-theme="light"] pre,
+:root[data-theme="light"] code {
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .title-block p,
+:root[data-theme="light"] .title p,
+:root[data-theme="light"] .section-meta,
+:root[data-theme="light"] .control-label,
+:root[data-theme="light"] .metric-label,
+:root[data-theme="light"] .mini-label,
+:root[data-theme="light"] .today-label,
+:root[data-theme="light"] .summary-label,
+:root[data-theme="light"] .detail-card-label,
+:root[data-theme="light"] .detail-meta,
+:root[data-theme="light"] .filter-label,
+:root[data-theme="light"] .table-empty,
+:root[data-theme="light"] .sub,
+:root[data-theme="light"] .step-label,
+:root[data-theme="light"] .step-unit,
+:root[data-theme="light"] .step-unit2,
+:root[data-theme="light"] .appearance-title p,
+:root[data-theme="light"] .appearance-control label,
+:root[data-theme="light"] .scan-eyebrow,
+:root[data-theme="light"] .scan-match-text,
+:root[data-theme="light"] .scan-label,
+:root[data-theme="light"] .scan-time {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="light"] .link,
+:root[data-theme="light"] .nav-link,
+:root[data-theme="light"] .title-link {
+  color: #234b64 !important;
+}
+
+:root[data-theme="light"] tbody tr:hover {
+  background: rgba(8, 127, 168, 0.06) !important;
+}
+
+:root[data-theme="light"] tbody tr,
+:root[data-theme="light"] tbody tr.selected {
+  background: #ffffff !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .input,
+:root[data-theme="light"] .select,
+:root[data-theme="light"] .control-select,
+:root[data-theme="light"] .filter-input,
+:root[data-theme="light"] .filter-select,
+:root[data-theme="light"] input,
+:root[data-theme="light"] select {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme="light"] input::placeholder,
+:root[data-theme="light"] textarea::placeholder {
+  color: #60798b !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme="light"] canvas {
+  color: var(--text) !important;
+}
+
+:root[data-theme="light"] .btn.secondary,
+:root[data-theme="light"] .btn-outline,
+:root[data-theme="light"] .action-btn.secondary {
+  color: var(--text) !important;
+  background: rgba(255, 255, 255, 0.52) !important;
+}
+
+:root[data-theme="light"] .btn.primary,
+:root[data-theme="light"] .action-btn.primary {
+  color: #ffffff !important;
+}
+
+:root[data-theme="light"] .scan-match-badge.good,
+:root[data-theme="light"] .status-chip.online,
+:root[data-theme="light"] .badge-online {
+  background: #ecfff4 !important;
+  color: #095b33 !important;
+  border-color: rgba(22, 124, 73, 0.38) !important;
+}
+
+:root[data-theme="light"] .scan-match-badge.bad,
+:root[data-theme="light"] .status-chip.offline,
+:root[data-theme="light"] .badge-offline {
+  background: #fff0f0 !important;
+  color: #8f2424 !important;
+  border-color: rgba(184, 58, 58, 0.38) !important;
+}
+
+:root[data-theme="light"] .badge-program {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme="light"] .link:hover,
+:root[data-theme="light"] .nav-link:hover,
+:root[data-theme="light"] .title-link:hover,
+:root[data-theme="light"] .nav-link.active {
+  color: #055f80 !important;
+}
+
+:root[data-theme="light"] .toast.ok {
+  background: rgba(232, 250, 240, 0.96) !important;
+  color: #0f5e37 !important;
+}
+
+:root[data-theme="light"] .toast.err,
+:root[data-theme="light"] .err {
+  background: rgba(255, 235, 235, 0.96) !important;
+  color: #9d2727 !important;
+}
