@@ -1032,6 +1032,7 @@
   'use strict';
 
   const SETTINGS_SYNC_KEY = 'ateq-settings-updated';
+  const MAIN_SELECTION_KEY = 'leak-test-main-selection-v1';
 
   const dom = {
     productSelect: document.getElementById('sel-product'),
@@ -1274,6 +1275,33 @@ function renderProgramBadge() {
   function resolveSelectedProduct() {
     const selectedModel = dom.productSelect.value;
     return state.products.find((item) => item.productModel === selectedModel) || null;
+  }
+
+  function readMainSelection() {
+    try {
+      const raw = localStorage.getItem(MAIN_SELECTION_KEY);
+      if (!raw) {
+        return {};
+      }
+
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      console.warn('Failed to read main selection', error);
+      return {};
+    }
+  }
+
+  function saveMainSelection() {
+    try {
+      localStorage.setItem(MAIN_SELECTION_KEY, JSON.stringify({
+        productModel: dom.productSelect.value || '',
+        operatorName: dom.operatorSelect.value || '',
+        updatedAt: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.warn('Failed to save main selection', error);
+    }
   }
 
   function doesScanMatchProduct(productProfile, scanText) {
@@ -2007,6 +2035,9 @@ function renderProgramBadge() {
   }
 
   async function loadSettings() {
+    const storedSelection = readMainSelection();
+    const preferredProductModel = dom.productSelect.value || storedSelection.productModel || '';
+    const preferredOperatorName = dom.operatorSelect.value || storedSelection.operatorName || '';
     const [productResponse, operatorResponse] = await Promise.all([
       api('/api/settings/products'),
       api('/api/settings/operators')
@@ -2037,13 +2068,21 @@ function renderProgramBadge() {
       dom.operatorSelect.appendChild(option);
     });
 
-    if (products.length && !dom.productSelect.value) {
-      dom.productSelect.value = products[0].productModel;
+    if (products.length) {
+      const productExists = products.some((product) => product.productModel === preferredProductModel);
+      dom.productSelect.value = productExists ? preferredProductModel : products[0].productModel;
+    } else {
+      dom.productSelect.value = '';
     }
 
-    if (operators.length && !dom.operatorSelect.value) {
-      dom.operatorSelect.value = operators[0].name;
+    if (operators.length) {
+      const operatorExists = operators.some((operator) => operator.name === preferredOperatorName);
+      dom.operatorSelect.value = operatorExists ? preferredOperatorName : operators[0].name;
+    } else {
+      dom.operatorSelect.value = '';
     }
+
+    saveMainSelection();
   }
 
   async function syncContext() {
@@ -2371,6 +2410,7 @@ function renderProgramBadge() {
   }
 
   dom.productSelect.addEventListener('change', () => {
+    saveMainSelection();
     renderProgramBadge();
     renderScan();
     state.programTimings = null;
@@ -2384,6 +2424,7 @@ function renderProgramBadge() {
   });
 
   dom.operatorSelect.addEventListener('change', () => {
+    saveMainSelection();
     scheduleContextSync();
   });
 
