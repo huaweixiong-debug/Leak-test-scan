@@ -24,7 +24,7 @@ const WORKFLOW_STATES = Object.freeze({
 });
 
 const ARMED_CONTEXT_STALE_MS = 8000;
-const DEFAULT_MONITOR_TIMEOUT_MS = 10 * 60 * 1000;
+const DEFAULT_MONITOR_TIMEOUT_MS = 30 * 60 * 1000;
 const ATEQ_IDLE_STEP_CODES = new Set([0, 65535]);
 
 function sleep(ms) {
