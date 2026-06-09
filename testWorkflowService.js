@@ -863,5 +863,11 @@ class TestWorkflowService {
 module.exports = {
   TestWorkflowError,
   WORKFLOW_STATES,
+  MONITOR_SETTINGS: {
+    defaultMonitorTimeoutMs: DEFAULT_MONITOR_TIMEOUT_MS,
+    maxMonitorSampleCount: MAX_MONITOR_SAMPLE_COUNT,
+    activeSampleWindowCount: ACTIVE_SAMPLE_WINDOW_COUNT,
+    savedSampleWindowCount: SAVED_SAMPLE_WINDOW_COUNT
+  },
   testWorkflowService: new TestWorkflowService()
 };

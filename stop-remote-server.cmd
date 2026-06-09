@@ -1,3 +1,3 @@
 @echo off
-for /f "tokens=5" %%i in ('netstat -ano ^| findstr ":3000" ^| findstr "LISTENING"') do taskkill /pid %%i /f >nul 2>nul
-echo stopped
+setlocal
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$conns = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if (-not $conns) { Write-Host '[INFO] port 3000 is not listening'; exit 0 }; foreach ($conn in $conns) { Write-Host ('[INFO] stopping PID ' + $conn.OwningProcess); Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 1; $left = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if ($left) { Write-Host '[WARN] port 3000 is still listening:'; $left | Format-Table -AutoSize; exit 1 }; Write-Host '[INFO] stopped'"

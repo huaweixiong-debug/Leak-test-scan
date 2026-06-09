@@ -18,7 +18,7 @@ const {
 } = require('./db');
 const { modbusService, ModbusError } = require('./modbusService');
 const { scannerService, ScannerError } = require('./scannerService');
-const { testWorkflowService, TestWorkflowError } = require('./testWorkflowService');
+const { testWorkflowService, TestWorkflowError, MONITOR_SETTINGS } = require('./testWorkflowService');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -335,7 +335,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (request, response) => {
-  response.json({ success: true, message: 'ATEQ backend alive' });
+  response.json({
+    success: true,
+    message: 'ATEQ backend alive',
+    build: 'monitor-30min-samples-10000',
+    monitor: MONITOR_SETTINGS
+  });
 });
 
 app.get('/api/config/ateq', async (request, response, next) => {
@@ -755,5 +760,4 @@ async function startServer() {
 }
 
 startServer();
-
 
