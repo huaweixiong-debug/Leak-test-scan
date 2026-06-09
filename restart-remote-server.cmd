@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo [INFO] Force stopping anything listening on port 3000...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$conns = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if ($conns) { foreach ($conn in $conns) { Write-Host ('[INFO] killing PID ' + $conn.OwningProcess); Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue } } else { Write-Host '[INFO] port 3000 is already free' }; Start-Sleep -Seconds 2; $left = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if ($left) { Write-Host '[ERROR] port 3000 is still occupied. Run this file as Administrator.'; $left | Format-Table -AutoSize; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$conns = @(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue); if ($conns.Count -gt 0) { foreach ($conn in $conns) { Write-Host ('[INFO] killing PID ' + $conn.OwningProcess); Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue } } else { Write-Host '[INFO] port 3000 is already free' }; Start-Sleep -Seconds 2; $left = @(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue); if ($left.Count -gt 0) { Write-Host '[ERROR] port 3000 is still occupied. Run this file as Administrator.'; $left | Format-Table -AutoSize; exit 1 }; exit 0"
 if errorlevel 1 (
   pause
   exit /b 1
