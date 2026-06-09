@@ -25,6 +25,9 @@ const WORKFLOW_STATES = Object.freeze({
 
 const ARMED_CONTEXT_STALE_MS = 8000;
 const DEFAULT_MONITOR_TIMEOUT_MS = 30 * 60 * 1000;
+const MAX_MONITOR_SAMPLE_COUNT = 10000;
+const ACTIVE_SAMPLE_WINDOW_COUNT = 10000;
+const SAVED_SAMPLE_WINDOW_COUNT = 10000;
 const ATEQ_IDLE_STEP_CODES = new Set([0, 65535]);
 
 function sleep(ms) {
@@ -457,11 +460,11 @@ class TestWorkflowService {
       };
 
       samples.push(sample);
-      if (samples.length > 1200) {
+      if (samples.length > MAX_MONITOR_SAMPLE_COUNT) {
         samples.shift();
       }
 
-      state.samples = samples.slice(-150);
+      state.samples = samples.slice(-ACTIVE_SAMPLE_WINDOW_COUNT);
       state.latestTelemetry = sample;
       state.currentStep = telemetry.stepCode;
       state.message = `Monitoring step ${telemetry.stepCode}`;
@@ -587,7 +590,7 @@ class TestWorkflowService {
         errorCode: finalErrorCode,
         rawStatusWord,
         sampleCount: samples.length,
-        samples: samples.slice(-300)
+        samples: samples.slice(-SAVED_SAMPLE_WINDOW_COUNT)
       });
 
       state.running = false;
