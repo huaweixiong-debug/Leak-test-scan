@@ -24,6 +24,7 @@ const WORKFLOW_STATES = Object.freeze({
 });
 
 const ARMED_CONTEXT_STALE_MS = 8000;
+const DEFAULT_MONITOR_TIMEOUT_MS = 10 * 60 * 1000;
 const ATEQ_IDLE_STEP_CODES = new Set([0, 65535]);
 
 function sleep(ms) {
@@ -439,7 +440,7 @@ class TestWorkflowService {
     const config = await getCommConfig('ateq');
     const pollIntervalMs = Math.max(50, Number(config && config.pollIntervalMs ? config.pollIntervalMs : 100));
     const startedAtMs = Date.now();
-    const timeoutMs = 120000;
+    const timeoutMs = DEFAULT_MONITOR_TIMEOUT_MS;
 
     const applyTelemetry = (telemetry, sampledAt, elapsedMs) => {
       const sample = {
