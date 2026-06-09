@@ -58,6 +58,7 @@ function normalizeTimestamp(value) {
 }
 
 const LEGACY_SIGNED32_SCALE_OFFSET = 4294967.296;
+const ZERO_PRESSURE_ZERO_LEAK_MARKER = 9999;
 
 function normalizeLegacyLeakValue(value) {
   const numericValue = Number(value);
@@ -73,6 +74,19 @@ function normalizeLegacyLeakValue(value) {
   }
 
   return numericValue;
+}
+
+function isZeroMetricValue(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && Math.abs(numericValue) < 0.0000005;
+}
+
+function normalizeFinalLeakValue(finalPressure, finalLeak) {
+  if (isZeroMetricValue(finalPressure) && isZeroMetricValue(finalLeak)) {
+    return ZERO_PRESSURE_ZERO_LEAK_MARKER;
+  }
+
+  return normalizeLegacyLeakValue(finalLeak);
 }
 
 async function persist() {
@@ -364,7 +378,7 @@ function rowToRecord(r) {
     startedAt: r[4], finishedAt: r[5], startMode: r[6], qrCode: r[7],
     productId: r[8], productModel: r[9], ateqProgramNo: r[10], operatorName: r[11],
     testPressure: r[12], finalPressure: r[13], pressureUnit: normalizeUnitLabel(r[14]),
-    finalLeak: normalizeLegacyLeakValue(r[15]), leakUnit: normalizeUnitLabel(r[16]),
+    finalLeak: normalizeFinalLeakValue(r[13], r[15]), leakUnit: normalizeUnitLabel(r[16]),
     resultCode,
     errorCode,
     errorText: deriveErrorText(r[19], errorCode, resultCode),
@@ -389,6 +403,8 @@ async function saveTestRecord(record) {
   const samplesJson = JSON.stringify(normalizedSamples);
   const pressureUnit = normalizeUnitLabel(record.pressureUnit);
   const leakUnit = normalizeUnitLabel(record.leakUnit);
+  const finalPressure = record.finalPressure != null ? Number(record.finalPressure) : null;
+  const finalLeak = record.finalLeak != null ? normalizeFinalLeakValue(finalPressure, record.finalLeak) : null;
   const normalizedResultCode = String(record.resultCode || '').trim().toUpperCase();
   const resultCode = normalizedResultCode && normalizedResultCode !== 'UNKNOWN'
     ? normalizedResultCode
@@ -401,8 +417,8 @@ async function saveTestRecord(record) {
     record.startMode||'', record.qrCode||'', record.productId||'',
     record.productModel||'', record.ateqProgramNo||0, record.operatorName||'',
     record.testPressure!=null?record.testPressure:null,
-    record.finalPressure!=null?record.finalPressure:null, pressureUnit,
-    record.finalLeak!=null?normalizeLegacyLeakValue(record.finalLeak):null, leakUnit,
+    finalPressure, pressureUnit,
+    finalLeak, leakUnit,
     resultCode, errorCode,
     record.rawStatusWord||null, record.sampleCount||0, samplesJson, now]);
   await persist();
