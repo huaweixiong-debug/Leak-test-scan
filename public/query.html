@@ -976,6 +976,21 @@
     return `${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
   }
 
+  function isZeroMetricValue(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && Math.abs(numericValue) < 0.0000005;
+  }
+
+  function isZeroOrMissingMetricValue(value) {
+    return value === null || value === undefined || value === '' || isZeroMetricValue(value);
+  }
+
+  function normalizeFinalLeakForDisplay(record) {
+    return record && isZeroOrMissingMetricValue(record.finalPressure) && isZeroMetricValue(record.finalLeak)
+      ? 9999
+      : record ? record.finalLeak : null;
+  }
+
   function formatDateTime(value) {
     if (!value) {
       return '-';
@@ -1106,7 +1121,7 @@
         `<td>${escapeHtml(record.productModel || '-')}</td>`,
         `<td>${escapeHtml(record.qrCode || '-')}</td>`,
         `<td>${escapeHtml(formatValueWithUnit(pressureValue, record.pressureUnit || ''))}</td>`,
-        `<td>${escapeHtml(formatValueWithUnit(record.finalLeak, record.leakUnit || ''))}</td>`,
+        `<td>${escapeHtml(formatValueWithUnit(normalizeFinalLeakForDisplay(record), record.leakUnit || ''))}</td>`,
         `<td class="${resultClass}">${escapeHtml(record.resultCode || '-')}</td>`,
         `<td class="reason-cell" title="${escapeHtml(reasonText)}">${escapeHtml(reasonText)}</td>`,
         `<td>${escapeHtml(record.operatorName || '-')}</td>`,
@@ -1340,7 +1355,7 @@
     dom.detailStartedAt.textContent = formatDateTime(record.startedAt);
     dom.detailFinishedAt.textContent = formatDateTime(record.finishedAt);
     dom.detailFinalPressure.textContent = formatValueWithUnit(pressureValue, record.pressureUnit || '');
-    dom.detailFinalLeak.textContent = formatValueWithUnit(record.finalLeak, record.leakUnit || '');
+    dom.detailFinalLeak.textContent = formatValueWithUnit(normalizeFinalLeakForDisplay(record), record.leakUnit || '');
     dom.detailFailureReason.textContent = reasonText;
     dom.detailErrorCode.textContent = record.errorCode || '-';
     dom.detailStatusWord.textContent = record.rawStatusWord != null ? String(record.rawStatusWord) : '-';

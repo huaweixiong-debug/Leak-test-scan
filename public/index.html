@@ -1165,6 +1165,21 @@
     return `${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
   }
 
+  function isZeroMetricValue(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && Math.abs(numericValue) < 0.0000005;
+  }
+
+  function isZeroOrMissingMetricValue(value) {
+    return value === null || value === undefined || value === '' || isZeroMetricValue(value);
+  }
+
+  function normalizeFinalLeakForDisplay(finalPressure, finalLeak) {
+    return isZeroOrMissingMetricValue(finalPressure) && isZeroMetricValue(finalLeak)
+      ? 9999
+      : finalLeak;
+  }
+
   function formatShortTime(value) {
     if (!value) {
       return '--:--:--';
@@ -1951,8 +1966,9 @@ function renderProgramBadge() {
     state.finalPressure = Number.isFinite(Number(savedRecord.finalPressure))
       ? Number(savedRecord.finalPressure)
       : state.finalPressure;
-    state.finalLeak = Number.isFinite(Number(savedRecord.finalLeak))
-      ? Number(savedRecord.finalLeak)
+    const normalizedFinalLeak = normalizeFinalLeakForDisplay(savedRecord.finalPressure, savedRecord.finalLeak);
+    state.finalLeak = Number.isFinite(Number(normalizedFinalLeak))
+      ? Number(normalizedFinalLeak)
       : state.finalLeak;
     state.finalPressureUnit = savedRecord.pressureUnit || state.finalPressureUnit || state.pressureUnit;
     state.finalLeakUnit = savedRecord.leakUnit || state.finalLeakUnit || state.leakUnit;
@@ -1985,7 +2001,7 @@ function renderProgramBadge() {
     dom.recordsMeta.textContent = `最近 ${safeRecords.length} 条记录`;
     dom.recordsBody.innerHTML = safeRecords.map((record) => {
       const pressureValue = Number.isFinite(Number(record.finalPressure)) ? record.finalPressure : record.testPressure;
-      const leakValue = record.finalLeak;
+      const leakValue = normalizeFinalLeakForDisplay(record.finalPressure, record.finalLeak);
       const resultClass = record.resultCode === 'OK' ? 'ok-text' : record.resultCode === 'NG' ? 'ng-text' : '';
       const resultTitle = record.resultCode === 'NG' && (record.errorText || record.errorCode)
         ? ` title="${escapeHtml(record.errorText || record.errorCode)}"`

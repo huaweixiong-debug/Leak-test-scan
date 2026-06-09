@@ -81,8 +81,12 @@ function isZeroMetricValue(value) {
   return Number.isFinite(numericValue) && Math.abs(numericValue) < 0.0000005;
 }
 
+function isZeroOrMissingMetricValue(value) {
+  return value === null || value === undefined || value === '' || isZeroMetricValue(value);
+}
+
 function normalizeFinalLeakValue(finalPressure, finalLeak) {
-  if (isZeroMetricValue(finalPressure) && isZeroMetricValue(finalLeak)) {
+  if (isZeroOrMissingMetricValue(finalPressure) && isZeroMetricValue(finalLeak)) {
     return ZERO_PRESSURE_ZERO_LEAK_MARKER;
   }
 
