@@ -204,6 +204,78 @@ Error: listen EADDRINUSE: address already in use :::3000
 
 `server.out` was empty at last check.
 
+## 2026-06-09 Diagnosis Update
+
+### What was found
+
+1. **Stuck node process on the remote PC** — `server.err` confirmed `EADDRINUSE :::3000`. An old node process was occupying port 3000 without responding.
+
+2. **Cannot execute commands remotely from this environment** — SSH, WinRM, WMI, and schtasks all fail (access denied / connection reset). File access works via the `U:` mapped drive.
+
+3. **`serialport` native module hangs when loaded from a network path** — running `require('serialport')` from `U:\ATEQ-Leak-Test` hangs indefinitely. The native `.node` binary cannot be loaded via `LoadLibrary` over SMB. This is a known Windows limitation.
+
+4. **New code verified correct** — copied to `C:\ATEQ-Leak-Test` on this machine and started successfully. `/api/health` returned the expected response. Full monitor constants confirmed.
+
+### Health endpoint — verified new response
+
+Tested on WIN-0HH52TJ5O4R with local copy:
+
+```json
+{
+  "success": true,
+  "message": "ATEQ backend alive",
+  "build": "monitor-30min-samples-10000",
+  "monitor": {
+    "defaultMonitorTimeoutMs": 1800000,
+    "maxMonitorSampleCount": 10000,
+    "activeSampleWindowCount": 10000,
+    "savedSampleWindowCount": 10000
+  }
+}
+```
+
+All constants match the expected values listed above.
+
+### Action required
+
+**Must be done on the remote PC (100.95.136.69) directly** (RDP or physical access):
+
+1. Open an elevated (Administrator) command prompt or PowerShell
+
+2. Run the restart script already deployed at:
+
+   ```powershell
+   D:\ATEQ Test\ATEQ-Leak-Test\_force_restart.ps1
+   ```
+
+3. Verify:
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:3000/api/health | ConvertTo-Json -Depth 5
+   ```
+
+   Look for `"build": "monitor-30min-samples-10000"`.
+
+### Alternative manual steps
+
+If the script doesn't work, run these commands on the remote PC:
+
+```bat
+cd /d "D:\ATEQ Test\ATEQ-Leak-Test"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }"
+timeout /t 3 /nobreak >nul
+start-remote-server.cmd
+```
+
+The `restart-remote-server.cmd` script also does this.
+
+### Cleanup
+
+- `C:\ATEQ-Leak-Test` on WIN-0HH52TJ5O4R — local test copy, can be deleted
+- `_force_restart.ps1`, `_start_server.ps1`, `_clean_restart.ps1`, `_kill_and_start.cmd`, `_diagnose.ps1` — helper scripts on the remote PC (via U:), safe to keep or delete
+
+---
+
 ## Immediate Next Steps for Claude Code
 
 Run these on the remote Windows PC, ideally in an elevated terminal:
