@@ -1,4 +1,9 @@
 @echo off
-setlocal
-cd /d "%~dp0"
-runtime18\node-v18.20.8-win-x64\node.exe server.js
+echo ============================================
+echo   DEPRECATED - ATEQ Leak Test is now C#
+echo ============================================
+echo.
+echo This was the old Node.js remote server launcher.
+echo Use: run-server.cmd
+echo ============================================
+exit /b 1

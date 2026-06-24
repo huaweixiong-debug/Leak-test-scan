@@ -1,5 +1,3 @@
-Set shell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
-shell.CurrentDirectory = scriptDir
-shell.Run "cmd /c """"" & scriptDir & "\start_bg.bat""""", 0, False
+MsgBox "DEPRECATED - ATEQ Leak Test is now C#/.NET." & vbCrLf & vbCrLf & _
+       "Use run-server.cmd or start-server-bg.ps1 to start the server." & vbCrLf & _
+       "See RUNBOOK.md for instructions.", vbExclamation, "ATEQ - Deprecated"

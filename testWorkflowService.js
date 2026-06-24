@@ -36,7 +36,7 @@ function sleep(ms) {
 
 function isAteqActiveStep(stepCode) {
   const numericStepCode = Number(stepCode);
-  return Number.isFinite(numericStepCode) && numericStepCode >= 4 && numericStepCode <= 100;
+  return Number.isFinite(numericStepCode) && numericStepCode >= 2 && numericStepCode <= 100;
 }
 
 class TestWorkflowError extends Error {
@@ -116,7 +116,7 @@ class TestWorkflowService {
       }
     }
 
-    console.log('[workflow] released stale armed context while waiting for step 4');
+    console.log('[workflow] released stale armed context while waiting for step 2');
     this.pendingContext = null;
     return true;
   }
@@ -130,7 +130,7 @@ class TestWorkflowService {
       return {
         running: false,
         stage: this.pendingContext.armed ? 'armed' : 'ready',
-        message: this.pendingContext.armed ? 'Waiting for ATEQ step 4' : 'Ready to start',
+        message: this.pendingContext.armed ? 'Waiting for ATEQ step 2' : 'Ready to start',
         startedAt: null,
         finishedAt: null,
         startMode: this.pendingContext.startMode,
@@ -230,7 +230,7 @@ class TestWorkflowService {
     }
     await this.releaseStaleArmedContextIfSafe();
     if (this.hasArmedPendingContext() || this.commandInFlight) {
-      throw new TestWorkflowError('Cannot change context while waiting for step 4', 409);
+      throw new TestWorkflowError('Cannot change context while waiting for step 2', 409);
     }
 
     const context = await this.buildContext(payload, false);
@@ -271,7 +271,7 @@ class TestWorkflowService {
     }
     await this.releaseStaleArmedContextIfSafe();
     if (this.commandInFlight || this.hasArmedPendingContext()) {
-      throw new TestWorkflowError('Start command already sent, waiting for step 4', 409);
+      throw new TestWorkflowError('Start command already sent, waiting for step 2', 409);
     }
 
     let context;
@@ -313,7 +313,7 @@ class TestWorkflowService {
 
     return {
       success: true,
-      message: 'Start command sent, waiting for step 4',
+      message: 'Start command sent, waiting for step 2',
       resultCode: 'UNKNOWN',
       errorCode: null
     };
@@ -328,9 +328,9 @@ class TestWorkflowService {
     }
 
     const stepCode = Number(telemetry.stepCode);
-    const enteredStep4 = stepCode === 4 && Number(previousStepCode) !== 4;
-    const recoveredActiveStep = !enteredStep4 && !this.activeRun && isAteqActiveStep(stepCode);
-    if (!enteredStep4 && !recoveredActiveStep) {
+    const enteredStep2 = stepCode === 2 && Number(previousStepCode) !== 2;
+    const recoveredActiveStep = !enteredStep2 && !this.activeRun && isAteqActiveStep(stepCode);
+    if (!enteredStep2 && !recoveredActiveStep) {
       return null;
     }
 
@@ -472,7 +472,7 @@ class TestWorkflowService {
       rawStatusWord = telemetry.statusWord;
       lastTelemetry = telemetry;
 
-      if (telemetry.stepCode >= 4 && telemetry.stepCode <= 100) {
+      if (telemetry.stepCode >= 2 && telemetry.stepCode <= 100) {
         testStarted = true;
       }
 

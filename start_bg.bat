@@ -1,5 +1,9 @@
 @echo off
-cd /d "%~dp0"
-where node >nul 2>nul || exit /b 1
-if not exist "node_modules" call npm install
-start "" /B cmd /c "npm start 1>>server.out 2>>server.err"
+echo ============================================
+echo   DEPRECATED - ATEQ Leak Test is now C#
+echo ============================================
+echo.
+echo This was the old Node.js background launcher.
+echo Use: powershell -File start-server-bg.ps1
+echo ============================================
+exit /b 1

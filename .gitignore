@@ -1,6 +1,15 @@
 node_modules/
 runtime18/
 data/
+.claude/
+.agents/
+.codex/
+backup/
+backup_*/
+delivery/
+src/**/bin/
+src/**/obj/
+src/**/objverify/
 
 *.log
 *.err

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>通讯测试</title>
+  <script src="/appearance.js"></script>
+  <link rel="stylesheet" href="/appearance.css">
+  <style>
+    :root {
+      --bg: #0f1419; --panel: #1a2332; --border: #2a3a50;
+      --text: #e6edf3; --muted: #8b9bb5; --accent: #58a6ff;
+      --good: #3fb950; --bad: #f85149; --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI","Noto Sans SC",sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .page { max-width: 1540px; margin: 0 auto; padding: 16px 16px 40px; }
+
+    .header {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 14px 18px; margin-bottom: 16px; border-radius: 10px;
+      border: 1px solid var(--border); background: linear-gradient(135deg, var(--panel), #1e2d44);
+    }
+    .header h1 { margin: 0 0 2px; font-size: 20px; }
+    .header .sub { color: var(--muted); font-size: 12px; }
+
+    .badge { display: flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 13px; border: 1px solid transparent; white-space: nowrap; }
+    .badge .dot { width: 9px; height: 9px; border-radius: 50%; }
+    .badge.online { background: rgba(63,185,80,0.12); border-color: rgba(63,185,80,0.3); color: var(--good); }
+    .badge.online .dot { background: var(--good); box-shadow: 0 0 6px var(--good); }
+    .badge.offline { background: rgba(248,81,73,0.12); border-color: rgba(248,81,73,0.3); color: var(--bad); }
+    .badge.offline .dot { background: var(--bad); }
+    .badge.warn { background: rgba(210,153,34,0.12); border-color: rgba(210,153,34,0.3); color: var(--warn); }
+    .badge.warn .dot { background: var(--warn); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .panel { padding: 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); margin-bottom: 14px; }
+    .panel h2 { margin: 0 0 12px; font-size: 14px; color: var(--accent); }
+
+    .controls {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;
+    }
+    .controls select {
+      padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 13px; min-width: 120px;
+    }
+    .controls label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px;
+      border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4090e8; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
+
+    .err { display: none; padding: 8px 14px; margin-bottom: 12px; border-radius: 7px; background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.3); color: var(--bad); font-size: 12px; }
+
+    /* ===== FLOW ===== */
+    .flow { display: flex; gap: 0; align-items: stretch; }
+    .flow-step {
+      flex: 1; padding: 14px 10px; text-align: center; position: relative;
+      border: 1px solid var(--border); border-radius: 8px;
+      margin-right: -1px; z-index: 1;
+    }
+    .flow-step:first-child { border-radius: 8px 0 0 8px; }
+    .flow-step:last-child { border-radius: 0 8px 8px 0; margin-right: 0; }
+    .flow-step .step-num { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .flow-step .step-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .flow-step .step-val { font-size: 14px; font-weight: 600; font-family: Consolas,monospace; min-height: 18px; }
+    .flow-step .step-unit { font-size: 10px; color: var(--muted); }
+    .flow-step .step-val2 { font-size: 12px; font-weight: 500; font-family: Consolas,monospace; min-height: 16px; margin-top: 2px; }
+    .flow-step .step-unit2 { font-size: 9px; color: var(--muted); }
+    .flow-step.past { background: rgba(63,185,80,0.06); border-color: rgba(63,185,80,0.25); }
+    .flow-step.past .step-num { color: var(--good); }
+    .flow-step.active { background: rgba(88,166,255,0.08); border-color: var(--accent); border-width: 2px; z-index: 2; }
+    .flow-step.active .step-num { color: var(--accent); }
+    .flow-step.future { opacity: 0.5; }
+    .flow-step.result-ok { background: rgba(63,185,80,0.1); border-color: rgba(63,185,80,0.4); }
+    .flow-step.result-ok .step-num { color: var(--good); }
+    .flow-step.result-ng { background: rgba(248,81,73,0.1); border-color: rgba(248,81,73,0.4); }
+    .flow-step.result-ng .step-num { color: var(--bad); }
+
+    @media (max-width: 600px) {
+      .flow { flex-wrap: wrap; }
+      .flow-step { flex: 0 0 50%; border-radius: 8px; margin: 0 -0.5px -0.5px 0; }
+    }
+
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .info-item { padding: 8px 10px; border-radius: 6px; background: var(--bg); }
+    .info-item .k { font-size: 11px; color: var(--muted); }
+    .info-item .v { font-size: 15px; font-weight: 600; font-family: Consolas,monospace; }
+
+    .log table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .log th { position: sticky; top: 0; background: var(--panel); padding: 5px 8px; text-align: left; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .log td { padding: 4px 8px; border-bottom: 1px solid rgba(42,58,80,0.5); font-family: Consolas,monospace; }
+
+    /* result badge */
+    .final-result {
+      display: none; padding: 12px 16px; border-radius: 8px; text-align: center;
+      font-size: 20px; font-weight: 700; margin-bottom: 14px;
+    }
+    .final-result.ok { display: block; background: rgba(63,185,80,0.12); border: 1px solid var(--good); color: var(--good); }
+    .final-result.ng { display: block; background: rgba(248,81,73,0.12); border: 1px solid var(--bad); color: var(--bad); }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <h1>通讯测试</h1>
+      <div class="sub">COM7 / 9600 / 8E1 / Slave 255</div>
+    </div>
+    <div id="badge" class="badge offline"><span class="dot"></span><span id="badge-text">检测中...</span></div>
+  </div>
+
+  <div id="err" class="err"></div>
+
+  <!-- 测试流程 -->
+  <div class="panel">
+    <h2>📋 测试流程</h2>
+    <div class="flow" id="flow">
+      <div class="flow-step future" data-step="4">
+        <div class="step-num">4</div>
+        <div class="step-label">充气</div>
+        <div class="step-val">-</div>
+        <div class="step-unit">kPa</div>
+      </div>
+      <div class="flow-step future" data-step="5">
+        <div class="step-num">5</div>
+        <div class="step-label">稳压/测试</div>
+        <div class="step-val">-</div>
+        <div class="step-unit">kPa</div>
+      </div>
+      <div class="flow-step future" data-step="6">
+        <div class="step-num">6</div>
+        <div class="step-label">降压/排气</div>
+        <div class="step-val">-</div>
+        <div class="step-unit">kPa</div>
+        <div class="step-val2">-</div>
+        <div class="step-unit2">Leak Pa</div>
+      </div>
+      <div class="flow-step future" data-step="7">
+        <div class="step-num">7</div>
+        <div class="step-label">漏率读取</div>
+        <div class="step-val">-</div>
+        <div class="step-unit">Pa</div>
+      </div>
+      <div class="flow-step future" data-step="65535">
+        <div class="step-num">END</div>
+        <div class="step-label">结果判定</div>
+        <div class="step-val">-</div>
+        <div class="step-unit">&nbsp;</div>
+      </div>
+    </div>
+    <div style="margin-top:10px; font-size:12px; color:var(--muted);">
+      步进码: <strong id="live-step">-</strong>
+      &nbsp;|&nbsp; 压力: <strong id="live-pressure">-</strong> kPa
+      &nbsp;|&nbsp; 泄漏: <strong id="live-leak">-</strong> Pa
+      &nbsp;|&nbsp; <span style="color:#58a6ff; cursor:pointer;" onclick="document.getElementById('raw-json').style.display=document.getElementById('raw-json').style.display==='none'?'block':'none'">[原始JSON]</span>
+    </div>
+    <pre id="raw-json" style="display:none; margin-top:8px; padding:10px; border-radius:6px; background:var(--bg); color:var(--muted); font-size:11px; max-height:200px; overflow:auto;"></pre>
+  </div>
+
+  <!-- 最终结果 -->
+  <div id="final-result" class="final-result"></div>
+
+  <!-- 操作区 -->
+  <div class="panel">
+    <h2>操作</h2>
+    <div class="controls">
+      <div><label>产品型号</label><select id="sel-product"><option value="">-- 选择 --</option></select></div>
+      <div><label>操作员</label><select id="sel-operator"><option value="">-- 选择 --</option></select></div>
+      <div style="display:flex; gap:6px; padding-top:16px;">
+        <button id="btn-start" class="btn btn-primary" disabled>▶ 启动</button>
+        <button id="btn-reset" class="btn btn-outline" disabled>↺ 复位</button>
+      </div>
+    </div>
+    <div class="info-grid">
+      <div class="info-item"><div class="k">连接</div><div class="v" id="info-connected">-</div></div>
+      <div class="info-item"><div class="k">程序号</div><div class="v" id="info-program">-</div></div>
+      <div class="info-item"><div class="k">状态字</div><div class="v" id="info-statusword">-</div></div>
+      <div class="info-item"><div class="k">轮询</div><div class="v" id="info-polls">0</div></div>
+    </div>
+  </div>
+
+  <!-- 遥测历史 -->
+  <div class="panel">
+    <h2>遥测历史</h2>
+    <div class="log" style="max-height:250px; overflow-y:auto;">
+      <table>
+        <thead><tr><th>时间</th><th>Step</th><th>压力(kPa)</th><th>泄漏(Pa)</th><th>状态</th></tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  const badge = $('badge'), badgeText = $('badge-text'), errEl = $('err');
+  const btnStart = $('btn-start'), btnReset = $('btn-reset');
+  const selProduct = $('sel-product'), selOperator = $('sel-operator');
+  const logBody = $('log-body'), flow = $('flow');
+  const finalResult = $('final-result');
+  const liveStep = $('live-step'), livePressure = $('live-pressure'), liveLeak = $('live-leak');
+  const rawJson = $('raw-json');
+
+  let pollCount = 0, pollTimer = null, connected = false;
+  let lastStep = null, stepMilestones = {}, activeTest = false;
+
+  function setBadge(state, text) { badge.className = 'badge ' + state; badgeText.textContent = text; }
+
+  async function api(url, opts) { const r = await fetch(url, { cache: 'no-store', ...opts }); if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }
+
+  function updateFlowValue(step, pressure, leak) {
+    const flowSteps = { '4': true, '5': true, '6': true, '7': true, '65535': true };
+    if (!flowSteps[String(step)]) return;
+    const stepEl = document.querySelector(`.flow-step[data-step="${step}"]`);
+    if (!stepEl) return;
+    if (step === 6) {
+      // Step 6 shows both pressure and leak
+      stepEl.querySelector('.step-val').textContent = pressure ?? '-';
+      stepEl.querySelector('.step-unit').textContent = 'kPa';
+      const v2 = stepEl.querySelector('.step-val2');
+      if (v2) v2.textContent = leak ?? '-';
+    } else if (step === 7 || step === 65535) {
+      stepEl.querySelector('.step-val').textContent = leak ?? '-';
+      stepEl.querySelector('.step-unit').textContent = 'Pa';
+    } else {
+      stepEl.querySelector('.step-val').textContent = pressure ?? '-';
+      stepEl.querySelector('.step-unit').textContent = 'kPa';
+    }
+  }
+
+  function updateFlowHighlight(step, resultCode) {
+    const flowSteps = { '4': true, '5': true, '6': true, '7': true, '65535': true };
+    if (!flowSteps[String(step)]) return;
+    const stepEl = document.querySelector(`.flow-step[data-step="${step}"]`);
+    if (!stepEl) return;
+
+    const allSteps = [...flow.querySelectorAll('.flow-step')];
+    const targetIdx = allSteps.indexOf(stepEl);
+    allSteps.forEach((el, i) => {
+      el.classList.remove('past', 'active', 'future', 'result-ok', 'result-ng');
+      if (i < targetIdx) el.classList.add('past');
+      else if (i === targetIdx) el.classList.add('active');
+      else el.classList.add('future');
+    });
+
+    if (step === 65535) {
+      allSteps.forEach(el => { el.classList.remove('active', 'future'); el.classList.add('past'); });
+      stepEl.classList.add(resultCode === 'OK' ? 'result-ok' : 'result-ng');
+    }
+  }
+
+  function addLog(step, pressure, leak, result) {
+    const row = document.createElement('tr');
+    const t = new Date().toLocaleTimeString();
+    const p = pressure != null ? pressure : '-';
+    const l = leak != null ? leak : '-';
+    row.innerHTML = `<td>${t}</td><td>${step}</td><td>${p}</td><td>${l}</td><td>${result||'-'}</td>`;
+    logBody.prepend(row);
+    while (logBody.children.length > 50) logBody.removeChild(logBody.lastChild);
+  }
+
+  async function pollStatus() {
+    try {
+      errEl.style.display = 'none';
+      const d = await api('/api/status');
+      const t = d.telemetry || {};
+      const step = t.stepCode;
+      rawJson.textContent = JSON.stringify({step:step, pressure:t.pressure, leak:t.leak, running:d.running, resultCode:d.resultCode}, null, 2);
+
+      connected = d.connected;
+      setBadge(d.connected ? 'online' : 'offline', d.connected ? '已连接' : '未连接');
+      btnStart.disabled = !d.connected || d.running;
+      btnReset.disabled = !d.connected;
+      $('info-connected').textContent = d.connected ? '已连接' : '断开';
+      $('info-program').textContent = d.currentJob ?? '-';
+      $('info-statusword').textContent = t.statusWord ?? '-';
+      pollCount++;
+      $('info-polls').textContent = pollCount;
+
+      // Always update live values
+      liveStep.textContent = step ?? '-';
+      livePressure.textContent = t.pressure ?? '-';
+      liveLeak.textContent = t.leak ?? '-';
+
+      // Update flow step value continuously (even within same step)
+      updateFlowValue(step, t.pressure, t.leak);
+
+      // Step changed - add log entry and highlight
+      if (d.running && step !== lastStep) {
+        updateFlowHighlight(step, d.resultCode);
+        addLog(step, t.pressure, t.leak, d.resultCode);
+        lastStep = step;
+        activeTest = true;
+      }
+
+      // Completed
+      if (!d.running && activeTest) {
+        updateFlowHighlight(65535, d.resultCode);
+        updateFlowValue(65535, t.pressure, t.leak);
+        addLog(step, t.pressure, t.leak, d.resultCode);
+        // Final result display — only show for completed tests (step 65535 with known result)
+        if (step === 65535 && d.resultCode !== 'UNKNOWN') {
+          finalResult.style.display = 'block';
+          finalResult.className = 'final-result ' + (d.resultCode === 'OK' ? 'ok' : 'ng');
+          finalResult.textContent = d.resultCode === 'OK' ? '[OK] 测试通过' : '[NG] 测试失败';
+          setTimeout(() => { finalResult.style.display = 'none'; }, 10000);
+        } else {
+          errEl.style.display = 'block';
+          errEl.textContent = '测试中断 (step=' + step + ' result=' + d.resultCode + ' statusWord=' + (t.statusWord||'?') + ')';
+          setTimeout(() => { errEl.style.display = 'none'; }, 8000);
+        }
+        activeTest = false;
+        lastStep = null;
+      }
+
+      if (!d.running && !activeTest && d.resultCode === 'OK') {
+        // Just update header
+        $('info-connected').textContent = d.connected ? '已连接' : '断开';
+      }
+    } catch (e) {
+      setBadge('offline', 'API 异常');
+      errEl.style.display = 'block';
+      errEl.textContent = '轮询失败: ' + (e.message || String(e));
+    }
+  }
+
+  async function doStart() {
+    const product = selProduct.value, operator = selOperator.value;
+    if (!product) { errEl.style.display = 'block'; errEl.textContent = '请选择产品'; return; }
+    btnStart.disabled = true;
+    finalResult.style.display = 'none';
+    // Reset flow
+    flow.querySelectorAll('.flow-step').forEach(el => {
+      el.classList.remove('past','active','result-ok','result-ng');
+      el.classList.add('future');
+      el.querySelector('.step-val').textContent = '-';
+      const v2 = el.querySelector('.step-val2');
+      if (v2) v2.textContent = '-';
+      const s = el.dataset.step;
+      el.querySelector('.step-unit').textContent = (s === '7' || s === '65535') ? 'Pa' : 'kPa';
+    });
+    activeTest = true; lastStep = null;
+    const body = { startMode: 'manual', productModel: product };
+    if (operator) body.operatorName = operator;
+    try {
+      const res = await api('/api/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.success) { errEl.style.display = 'block'; errEl.textContent = res.message || 'failed'; }
+    } catch (e) {
+      errEl.style.display = 'block'; errEl.textContent = e.message || String(e);
+    }
+    btnStart.disabled = false;
+  }
+
+  async function doReset() {
+    btnReset.disabled = true;
+    try { await api('/api/reset', { method: 'POST' }); } catch (e) {}
+    btnReset.disabled = false;
+  }
+
+  async function loadSettings() {
+    try {
+      const [pr, op] = await Promise.all([api('/api/settings/products'), api('/api/settings/operators')]);
+      (pr.products||[]).forEach(p => { if (p.isActive) { const o = document.createElement('option'); o.value = p.productModel; o.textContent = p.productModel; selProduct.appendChild(o); } });
+      (op.operators||[]).forEach(o => { if (o.isActive) { const opt = document.createElement('option'); opt.value = o.name; opt.textContent = o.name; selOperator.appendChild(opt); } });
+      if (selProduct.options.length > 1) selProduct.selectedIndex = 1;
+      if (selOperator.options.length > 1) selOperator.selectedIndex = 1;
+    } catch(e) {}
+  }
+
+  btnStart.addEventListener('click', doStart);
+  btnReset.addEventListener('click', doReset);
+  loadSettings();
+  pollStatus();
+  pollTimer = setInterval(pollStatus, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (!document.hidden) { pollStatus(); pollTimer = setInterval(pollStatus, 1000); }
+  });
+})();
+</script>
+</body>
+</html>
