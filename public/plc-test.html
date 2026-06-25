@@ -170,7 +170,7 @@
 
   /* ---- point grids ---- */
   .point-grid{ display:grid; gap:3px; }
-  #controls-grid{ grid-template-columns:repeat(3, 1fr); }
+  #controls-grid{ grid-template-columns:repeat(4, 1fr); }
   #alarms-grid{ grid-template-columns:repeat(5, 1fr); }
   #inputs-grid{ grid-template-columns:repeat(5, 1fr); }
 
@@ -282,7 +282,7 @@
       <div class="section-head">
         <div>
           <h2>手动控制</h2>
-          <div class="section-meta">M10 手动模式 · M11 移载气缸 · M12 下压气缸</div>
+          <div class="section-meta">M0 启动许可状态 · M10 手动模式 · M11 移载气缸 · M12 下压气缸</div>
         </div>
       </div>
       <div class="point-grid" id="controls-grid"></div>
@@ -323,16 +323,23 @@
   const POLL_MS = 500;
   const TOLERANCE_MAX_FAILS = 3;
   const TOLERANCE_STALE_MS = 8000;
+  const SETTINGS_SYNC_KEY = "ateq-settings-updated";
+  const SETTINGS_SYNC_CHANNEL = "ateq-settings-updated-channel";
+  const settingsSyncChannel = typeof BroadcastChannel === "function"
+    ? new BroadcastChannel(SETTINGS_SYNC_CHANNEL)
+    : null;
   const state = {
     config: null,
     monitor: null,
     pollTimer: null,
     pollBusy: false,
+    actionBusy: false,
     manualApiAvailable: true,
     compatibilityNoticeShown: false,
     previousPointValues: {},
     consecutiveFails: 0,
-    lastSuccess: 0
+    lastSuccess: 0,
+    lastSettingsSyncAt: ""
   };
 
   async function api(url, options) {
@@ -459,11 +466,11 @@
     errorPill.style.borderColor = monitor.lastError ? "#f0a3a9" : "";
     errorPill.style.color = monitor.lastError ? "var(--bad)" : "";
 
-    const actionsDisabled = !monitor.online || !monitor.enabled || !state.manualApiAvailable;
-    document.getElementById("btn-refresh").disabled = state.pollBusy;
-    document.getElementById("btn-reset-manual").disabled = actionsDisabled || state.pollBusy;
+    const actionsDisabled = !monitor.online || !monitor.enabled || !state.manualApiAvailable || state.actionBusy;
+    document.getElementById("btn-refresh").disabled = state.pollBusy || state.actionBusy;
+    document.getElementById("btn-reset-manual").disabled = actionsDisabled;
     document.getElementById("btn-reset-manual").title = state.manualApiAvailable ? "" : "当前服务版本过旧，请先重启 C# 服务";
-    syncControlButtonState(actionsDisabled || state.pollBusy);
+    syncControlButtonState(actionsDisabled);
   }
 
   function syncControlButtonState(disabled) {
@@ -499,7 +506,7 @@
       '<div class="' + cardStateClass(group, point) + '">' + (point.value ? point.onText : point.offText) + '</div>' +
       '<div class="point-hint">' + hint + '</div>';
 
-    if (group === "control") {
+    if (group === "control" && point.writable) {
       const actions = document.createElement("div");
       actions.className = "point-actions";
 
@@ -507,7 +514,7 @@
       onButton.className = "btn btn-on";
       onButton.type = "button";
       onButton.textContent = "置 ON";
-      onButton.disabled = !state.monitor || !state.monitor.online || !state.monitor.enabled || !state.manualApiAvailable || state.pollBusy;
+      onButton.disabled = !state.monitor || !state.monitor.online || !state.monitor.enabled || !state.manualApiAvailable || state.actionBusy;
       onButton.addEventListener("click", function () {
         writeCoil(point.label, true);
       });
@@ -516,7 +523,7 @@
       offButton.className = "btn btn-off";
       offButton.type = "button";
       offButton.textContent = "置 OFF";
-      offButton.disabled = !state.monitor || !state.monitor.online || !state.monitor.enabled || !state.manualApiAvailable || state.pollBusy;
+      offButton.disabled = !state.monitor || !state.monitor.online || !state.monitor.enabled || !state.manualApiAvailable || state.actionBusy;
       offButton.addEventListener("click", function () {
         writeCoil(point.label, false);
       });
@@ -578,6 +585,26 @@
     renderPoints("controls-grid", "control", panel.controls || []);
     renderPoints("alarms-grid", "alarm", panel.alarms || []);
     renderPoints("inputs-grid", "input", panel.inputs || []);
+  }
+
+  function applyLocalControlValue(label, value) {
+    const controls = state.monitor && state.monitor.panel ? state.monitor.panel.controls : null;
+    if (!Array.isArray(controls)) {
+      return;
+    }
+
+    const point = controls.find(function (item) {
+      return item.label === label;
+    });
+
+    if (!point) {
+      return;
+    }
+
+    point.value = value;
+    state.monitor.online = true;
+    state.monitor.lastError = "";
+    state.lastSuccess = Date.now();
   }
 
   async function loadConfig() {
@@ -655,16 +682,29 @@
   }
 
   async function writeCoil(label, value) {
-    state.pollBusy = true;
+    if (state.actionBusy) {
+      return;
+    }
+
+    state.actionBusy = true;
     renderSummary();
 
     try {
-      await api("/api/plc/write-coil", {
+      const response = await api("/api/plc/write-coil", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ label: label, value: value })
       });
-      log(label + " 已写入 " + (value ? "ON" : "OFF"), "ok");
+      const actual = response && response.data ? response.data.actual === true : value;
+      applyLocalControlValue(label, actual);
+      renderAll();
+
+      if (actual === value) {
+        log(label + " 已写入 " + (value ? "ON" : "OFF"), "ok");
+      } else {
+        log(label + " 写入完成，但 PLC 当前返回 " + (actual ? "ON" : "OFF"), "warn");
+      }
+
       await pollManualMonitor({ silent: true });
     } catch (error) {
       if (error.status === 404) {
@@ -675,17 +715,25 @@
         log(label + " 写入失败: " + error.message, "err");
       }
     } finally {
-      state.pollBusy = false;
+      state.actionBusy = false;
       renderSummary();
     }
   }
 
   async function resetManualOutputs() {
-    state.pollBusy = true;
+    if (state.actionBusy) {
+      return;
+    }
+
+    state.actionBusy = true;
     renderSummary();
 
     try {
       await api("/api/plc/manual-reset", { method: "POST" });
+      applyLocalControlValue("M10", false);
+      applyLocalControlValue("M11", false);
+      applyLocalControlValue("M12", false);
+      renderAll();
       log("M10 / M11 / M12 已全部关闭", "warn");
       await pollManualMonitor({ silent: true });
     } catch (error) {
@@ -697,7 +745,7 @@
         log("手动输出复位失败: " + error.message, "err");
       }
     } finally {
-      state.pollBusy = false;
+      state.actionBusy = false;
       renderSummary();
     }
   }
@@ -705,7 +753,7 @@
   function startPolling() {
     stopPolling();
     state.pollTimer = window.setInterval(function () {
-      if (!state.pollBusy) {
+      if (!state.pollBusy && !state.actionBusy) {
         pollManualMonitor({ silent: true });
       }
     }, POLL_MS);
@@ -725,6 +773,46 @@
   document.getElementById("btn-reset-manual").addEventListener("click", function () {
     resetManualOutputs();
   });
+
+  async function handleSettingsSync(detail) {
+    if (!detail || detail.scope !== "products") {
+      return;
+    }
+
+    var syncAt = String(detail.at || "");
+    if (syncAt && state.lastSettingsSyncAt === syncAt) {
+      return;
+    }
+    state.lastSettingsSyncAt = syncAt;
+
+    await pollManualMonitor({ silent: true });
+    log("产品设置已同步，M0 状态已刷新", "info");
+  }
+
+  window.addEventListener("storage", function (event) {
+    if (event.key !== SETTINGS_SYNC_KEY) {
+      return;
+    }
+
+    var detail = null;
+    try {
+      detail = event.newValue ? JSON.parse(event.newValue) : null;
+    } catch {
+      detail = null;
+    }
+
+    handleSettingsSync(detail).catch(function (error) {
+      log("产品设置同步失败: " + error.message, "warn");
+    });
+  });
+
+  if (settingsSyncChannel) {
+    settingsSyncChannel.addEventListener("message", function (event) {
+      handleSettingsSync(event.data || null).catch(function (error) {
+        log("产品设置同步失败: " + error.message, "warn");
+      });
+    });
+  }
 
   window.addEventListener("beforeunload", stopPolling);
 

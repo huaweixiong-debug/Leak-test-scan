@@ -433,7 +433,11 @@
   'use strict';
 
   const SETTINGS_SYNC_KEY = 'ateq-settings-updated';
+  const SETTINGS_SYNC_CHANNEL = 'ateq-settings-updated-channel';
   const PRODUCT_SCAN_FLAGS_KEY = 'ateq-product-scan-flags-v1';
+  const settingsSyncChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel(SETTINGS_SYNC_CHANNEL)
+    : null;
 
   const state = {
     products: [],
@@ -594,13 +598,21 @@
   }
 
   function emitSettingsUpdated(scope) {
+    const detail = {
+      scope,
+      at: new Date().toISOString()
+    };
+
     try {
-      localStorage.setItem(SETTINGS_SYNC_KEY, JSON.stringify({
-        scope,
-        at: new Date().toISOString()
-      }));
+      localStorage.setItem(SETTINGS_SYNC_KEY, JSON.stringify(detail));
     } catch (error) {
       console.warn('Failed to emit settings sync event', error);
+    }
+
+    try {
+      settingsSyncChannel && settingsSyncChannel.postMessage(detail);
+    } catch (error) {
+      console.warn('Failed to broadcast settings sync event', error);
     }
   }
 

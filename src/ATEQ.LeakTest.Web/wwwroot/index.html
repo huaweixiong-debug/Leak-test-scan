@@ -727,6 +727,14 @@
   .ok-text{color:var(--good);font-weight:800}
   .ng-text{color:var(--bad);font-weight:800}
 
+  .qr-cell{
+    max-width:320px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-all;
+    line-height:1.35;
+  }
+
   .error-toast{
     position:fixed;
     left:50%;
@@ -1110,7 +1118,11 @@
   'use strict';
 
   const SETTINGS_SYNC_KEY = 'ateq-settings-updated';
+  const SETTINGS_SYNC_CHANNEL = 'ateq-settings-updated-channel';
   const MAIN_SELECTION_KEY = 'leak-test-main-selection-v1';
+  const settingsSyncChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel(SETTINGS_SYNC_CHANNEL)
+    : null;
 
   const dom = {
     productSelect: document.getElementById('sel-product'),
@@ -1195,7 +1207,8 @@
     scannerPoller: null,
     scannerPollBusy: false,
     scannerOptimisticUntil: 0,
-    scannerOptimisticRawText: ''
+    scannerOptimisticRawText: '',
+    lastSettingsSyncAt: ''
   };
 
   function escapeHtml(value) {
@@ -2133,7 +2146,7 @@ function renderProgramBadge() {
         '<tr>',
         `<td>${escapeHtml(record.sequenceCode || '-')}</td>`,
         `<td>${escapeHtml(record.productModel || '-')}</td>`,
-        `<td>${escapeHtml(record.qrCode || '-')}</td>`,
+        `<td class="qr-cell" title="${escapeHtml(record.qrCode || '-')}">${escapeHtml(record.qrCode || '-')}</td>`,
         `<td>${escapeHtml(formatValueWithUnit(pressureValue, record.pressureUnit || ''))}</td>`,
         `<td>${escapeHtml(formatValueWithUnit(leakValue, record.leakUnit || ''))}</td>`,
         `<td class="${resultClass}"${resultTitle}>${escapeHtml(record.resultCode || '-')}</td>`,
@@ -2229,21 +2242,6 @@ function renderProgramBadge() {
       return;
     }
 
-    const selectedProduct = resolveSelectedProduct();
-    const latestScanText = String(state.latestScan && state.latestScan.rawText ? state.latestScan.rawText : '').trim();
-    const requireScanRecord = Boolean(selectedProduct && selectedProduct.scanConfirmEnabled !== false);
-    const requireScanMatch = Boolean(selectedProduct && selectedProduct.scanMatchEnabled === true);
-
-    // For scan-gated products, avoid calling the backend during page refresh or passive re-sync
-    // until we actually have a usable scan on hand.
-    if (requireScanRecord && !latestScanText) {
-      return;
-    }
-
-    if (requireScanMatch && !doesScanMatchSelectedProduct(selectedProduct)) {
-      return;
-    }
-
     try {
       const response = await api('/api/test/context', {
         method: 'POST',
@@ -2322,8 +2320,30 @@ function renderProgramBadge() {
     state.syncTimer = window.setTimeout(syncContext, 180);
   }
 
+  async function handleSettingsSync(detail) {
+    if (!detail || (detail.scope !== 'products' && detail.scope !== 'operators')) {
+      return;
+    }
+
+    const syncAt = String(detail.at || '');
+    if (syncAt && state.lastSettingsSyncAt === syncAt) {
+      return;
+    }
+    state.lastSettingsSyncAt = syncAt;
+
+    await loadSettings();
+    state.programTimings = null;
+    state.programTimingsKey = null;
+    state.programTimingRetryAt = 0;
+    renderAll();
+    await syncContext();
+    renderAll();
+    loadProgramTimings(true).catch(() => {});
+  }
+
   async function pollStatus() {
     try {
+      const wasConnected = state.connected;
       const payload = await api('/api/status');
       const telemetry = payload.telemetry || {};
 
@@ -2331,6 +2351,9 @@ function renderProgramBadge() {
       state.ateqLastSuccess = Date.now();
 
       setAteqStatus(payload.connected, payload.stale);
+      if (!wasConnected && payload.connected) {
+        scheduleContextSync();
+      }
       state.currentProgram = payload.currentJob || null;
       state.currentStep = payload.currentStep ?? null;
       state.resultCode = payload.resultCode || 'UNKNOWN';
@@ -2682,10 +2705,21 @@ function renderProgramBadge() {
       return;
     }
 
-    loadSettings()
-      .then(() => syncContext().catch(() => {}))
-      .catch(() => {});
+    let detail = null;
+    try {
+      detail = event.newValue ? JSON.parse(event.newValue) : null;
+    } catch {
+      detail = null;
+    }
+
+    handleSettingsSync(detail).catch(() => {});
   });
+
+  if (settingsSyncChannel) {
+    settingsSyncChannel.addEventListener('message', (event) => {
+      handleSettingsSync(event.data || null).catch(() => {});
+    });
+  }
 
   window.addEventListener('scanner-local-scan', (event) => {
     const detail = event.detail || {};

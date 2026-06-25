@@ -20,6 +20,31 @@ function Stop-AteqProcesses {
     }
 }
 
+function Get-Port3000OwnerProcessInfo {
+    $portOwner = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $portOwner) {
+        return $null
+    }
+
+    $ownerPid = $portOwner.OwningProcess
+    $cimProc = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ownerPid) -ErrorAction SilentlyContinue
+    $psProc = Get-Process -Id $ownerPid -ErrorAction SilentlyContinue
+    $ownerName = if ($psProc) { $psProc.Name } elseif ($cimProc) { $cimProc.Name } else { "Unknown" }
+    $commandLine = if ($cimProc) { $cimProc.CommandLine } else { "" }
+    $isAteq = $ownerName -ieq "ATEQ.LeakTest.Web" -or
+        $ownerName -ieq "ATEQ.LeakTest.Web.exe" -or
+        (($ownerName -ieq "dotnet") -and $commandLine -like "*ATEQ.LeakTest.Web*") -or
+        (($ownerName -ieq "dotnet.exe") -and $commandLine -like "*ATEQ.LeakTest.Web*")
+
+    return [pscustomobject]@{
+        PortOwner = $portOwner
+        Pid = $ownerPid
+        Name = $ownerName
+        CommandLine = $commandLine
+        IsAteq = $isAteq
+    }
+}
+
 function Wait-ForHealth {
     param(
         [string]$Url,
@@ -89,6 +114,7 @@ else {
 if (-not $Dotnet) {
     throw "dotnet runtime not found"
 }
+
 $ScriptDir = Split-Path -Parent $PSCommandPath
 $ProjectDir = $ScriptDir
 $AppDir = Join-Path $ProjectDir "src\ATEQ.LeakTest.Web"
@@ -103,12 +129,11 @@ if (-not (Test-Path $DllPath)) {
     throw "Built server DLL not found: $DllPath. Run .\build.cmd first."
 }
 
-# Use schtasks as the primary method — it survives SSH session termination.
-# Start-Process does NOT survive SSH disconnect on some Windows configurations.
+# Use schtasks as the primary method. It survives SSH session termination.
+# Start-Process does not survive SSH disconnect on some Windows configurations.
 $UseSchtask = -not $NoSchtask
 
 if ($UseSchtask) {
-    # Check if schtasks is functional
     $SchtaskCheck = schtasks /? 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "schtasks not available, falling back to Start-Process" -ForegroundColor Yellow
@@ -117,48 +142,46 @@ if ($UseSchtask) {
 }
 
 # ---------- Port conflict detection ----------
-$PortOwner = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($PortOwner) {
-    $OwnerPid = $PortOwner.OwningProcess
-    $OwnerProc = Get-Process -Id $OwnerPid -ErrorAction SilentlyContinue
-    $OwnerName = if ($OwnerProc) { $OwnerProc.Name } else { "Unknown" }
-
-    if ($OwnerName -ne "dotnet" -and $OwnerName -ne "ATEQ.LeakTest.Web") {
-        Write-Host "ERROR: Port 3000 is occupied by $OwnerName (PID $OwnerPid)" -ForegroundColor Red
-        Write-Host "This is NOT the C# ATEQ server. It may be a legacy Node.js process." -ForegroundColor Red
-        Write-Host "Stop it first: taskkill /F /PID $OwnerPid" -ForegroundColor Yellow
-        Write-Host "Then re-run this script." -ForegroundColor Yellow
+$PortOwnerInfo = Get-Port3000OwnerProcessInfo
+if ($PortOwnerInfo) {
+    if (-not $PortOwnerInfo.IsAteq) {
+        Write-Host "ERROR: Port 3000 is occupied by $($PortOwnerInfo.Name) (PID $($PortOwnerInfo.Pid))" -ForegroundColor Red
+        Write-Host "This is not the C# ATEQ server. Stop it first: taskkill /F /PID $($PortOwnerInfo.Pid)" -ForegroundColor Yellow
         exit 1
     }
-    # It is dotnet.exe — verify it is OUR ATEQ service, not some unrelated dotnet app
+
     try {
         $HealthCheck = Invoke-WebRequest -UseBasicParsing -Uri $HealthUrl -TimeoutSec 2
         $Body = $HealthCheck.Content | ConvertFrom-Json
         if ($Body.build -ne "dotnet-1.0.0") {
-            Write-Host "ERROR: Port 3000 is owned by dotnet.exe (PID $OwnerPid) but it is NOT the ATEQ C# service." -ForegroundColor Red
+            Write-Host "ERROR: Port 3000 responds, but it is not the ATEQ C# service." -ForegroundColor Red
+            Write-Host "PID: $($PortOwnerInfo.Pid), process: $($PortOwnerInfo.Name)" -ForegroundColor Yellow
             Write-Host "health response: $($HealthCheck.Content)" -ForegroundColor Yellow
-            Write-Host "Stop it first: taskkill /F /PID $OwnerPid" -ForegroundColor Yellow
             exit 1
         }
-        Write-Host "Port 3000 is owned by the ATEQ C# service (PID $OwnerPid) — will stop it." -ForegroundColor Cyan
-    } catch {
-        Write-Host "ERROR: Port 3000 is owned by dotnet.exe (PID $OwnerPid) but /api/health is not responding." -ForegroundColor Red
-        Write-Host "It is not the ATEQ C# service. Stop it first: taskkill /F /PID $OwnerPid" -ForegroundColor Yellow
-        exit 1
+
+        Write-Host "Port 3000 is already owned by the ATEQ C# service." -ForegroundColor Cyan
+        Write-Host "  PID: $($PortOwnerInfo.Pid). Restarting it now." -ForegroundColor Cyan
     }
+    catch {
+        Write-Host "Port 3000 is owned by an ATEQ dotnet host." -ForegroundColor Yellow
+        Write-Host "  PID: $($PortOwnerInfo.Pid). /api/health is not responding." -ForegroundColor Yellow
+        Write-Host "  Force-stopping stale process..." -ForegroundColor Yellow
+    }
+
+    Stop-Process -Id $PortOwnerInfo.Pid -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
 }
 
 # ---------- Kill any existing instance ----------
 Write-Host "Stopping any existing ATEQ server..." -ForegroundColor Cyan
 
-# Stop running scheduled task
 if ($UseSchtask) {
     schtasks /End /TN $TaskName 2>&1 | Out-Null
     schtasks /Delete /TN $TaskName /F 2>&1 | Out-Null
 }
 
 Stop-AteqProcesses
-
 Start-Sleep -Seconds 1
 
 # ---------- Start server ----------
@@ -166,7 +189,6 @@ Write-Host "Starting ATEQ Leak Test server..." -ForegroundColor Cyan
 $LaunchMethod = $null
 
 if ($UseSchtask) {
-    # Create a one-time scheduled task that runs immediately
     $TaskCommand = "cmd /c cd /d `"$ProjectDir`" && set ASPNETCORE_URLS=$AspNetCoreUrls && `"$Dotnet`" `"$DllPath`" > `"$LogFile`" 2>&1"
 
     schtasks /Create `
@@ -197,7 +219,6 @@ if ($UseSchtask) {
 }
 
 if (-not $UseSchtask) {
-    # Fallback: Start-Process (works for interactive/RDP sessions and keeps COM devices in the user session)
     Start-AteqWithHiddenProcess `
         -DotnetPath $Dotnet `
         -Dll $DllPath `
@@ -210,7 +231,6 @@ if (-not $UseSchtask) {
 
 # ---------- Health check ----------
 Write-Host "Waiting for server to be ready..." -ForegroundColor Cyan
-
 $Healthy = Wait-ForHealth -Url $HealthUrl
 
 if (-not $Healthy -and $LaunchMethod -eq "schtasks") {

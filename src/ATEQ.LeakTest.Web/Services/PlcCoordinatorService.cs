@@ -212,6 +212,7 @@ public class PlcCoordinatorService
                 catch { _edgesSeeded = false; }
                 Online = true;
                 LastError = null;
+                await _workflow.RestoreScanFreeM0IfNeededAsync();
             }
             else
             {

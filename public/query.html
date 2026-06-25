@@ -369,6 +369,14 @@
     text-overflow: ellipsis;
   }
 
+  .qr-cell {
+    max-width: 360px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    line-height: 1.4;
+  }
+
   .pager {
     margin-top: 12px;
     display: flex;
@@ -537,6 +545,12 @@
   .detail-card-value.small {
     font-size: 14px;
     font-weight: 600;
+  }
+
+  #detail-qr {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    line-height: 1.4;
   }
 
   .detail-chart-grid {
@@ -1130,7 +1144,7 @@
         `<tr data-record-id="${escapeHtml(record.id)}" class="${selectedClass.trim()}">`,
         `<td>${escapeHtml(record.sequenceCode || '-')}</td>`,
         `<td>${escapeHtml(record.productModel || '-')}</td>`,
-        `<td>${escapeHtml(record.qrCode || '-')}</td>`,
+        `<td class="qr-cell" title="${escapeHtml(record.qrCode || '-')}">${escapeHtml(record.qrCode || '-')}</td>`,
         `<td>${escapeHtml(formatValueWithUnit(pressureValue, record.pressureUnit || ''))}</td>`,
         `<td>${escapeHtml(formatValueWithUnit(normalizeFinalLeakForDisplay(record), record.leakUnit || ''))}</td>`,
         `<td class="${resultClass}">${escapeHtml(record.resultCode || '-')}</td>`,

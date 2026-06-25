@@ -34,6 +34,7 @@ public class PlcService
 
     private static readonly PlcMonitorPoint[] ManualControlPoints =
     [
+        new("M0", 8192, "启动许可状态", "允许启动", "未允许", false),
         new("M10", 8202, "手动模式", "手动开启", "手动关闭", true),
         new("M11", 8203, "移载气缸", "前进", "后退", true),
         new("M12", 8204, "下压气缸", "下压", "上升", true)
@@ -256,11 +257,13 @@ public class PlcService
         if (!IsConnected)
             throw new ModbusException("PLC not connected");
 
+        const ushort m0Address = 8192;
         const ushort monitorCoilStart = 8202;
         const ushort monitorCoilCount = 15;
         const ushort monitorInputStart = 0;
         const ushort monitorInputCount = 9;
 
+        var m0Value = await _client.ReadCoilsAsync(_unitId, m0Address, 1);
         var coilValues = await _client.ReadCoilsAsync(_unitId, monitorCoilStart, monitorCoilCount);
         var inputValues = await _client.ReadDiscreteInputsAsync(_unitId, monitorInputStart, monitorInputCount);
 
@@ -278,13 +281,19 @@ public class PlcService
         bool ReadCoilPoint(PlcMonitorPoint point) => coilValues[point.Address - monitorCoilStart];
         bool ReadInputPoint(PlcMonitorPoint point) => inputValues[point.Address - monitorInputStart];
 
+        var controls = new List<object>
+        {
+            BuildPoint(ManualControlPoints[0], m0Value.Length > 0 && m0Value[0])
+        };
+        controls.AddRange(ManualControlPoints.Skip(1).Select(point => BuildPoint(point, ReadCoilPoint(point))));
+
         var result = (object)new
         {
             connected = true,
             host = _host,
             port = _port,
             unitId = _unitId,
-            controls = ManualControlPoints.Select(point => BuildPoint(point, ReadCoilPoint(point))).ToArray(),
+            controls = controls.ToArray(),
             alarms = AlarmPoints.Select(point => BuildPoint(point, ReadCoilPoint(point))).ToArray(),
             inputs = InputPoints.Select(point => BuildPoint(point, ReadInputPoint(point))).ToArray()
         };

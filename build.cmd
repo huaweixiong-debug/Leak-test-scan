@@ -29,6 +29,7 @@ echo.
 echo [2/4] Stopping running ATEQ server (if any)...
 cd /d "%~dp0"
 call "%~dp0stop-server.cmd" >nul
+timeout /t 2 /nobreak >nul
 echo.
 
 :: ---- Restore ----

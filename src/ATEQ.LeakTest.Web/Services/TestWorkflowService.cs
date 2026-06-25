@@ -83,14 +83,13 @@ public class TestWorkflowService
         // operator chose manually 鈥?the QR should take priority for auto-start.
         var scope = CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        var plc = scope.ServiceProvider.GetRequiredService<PlcService>();
         var productProfile = await db.MatchProductProfileByQrAsync(scanBinding.qrCode)
                           ?? _pendingContext?.ProductProfile
                           ?? _selectedContext?.ProductProfile;
         if (productProfile == null) return null;
 
-        // Notify PLC that scan matched a product
-        _ = plc.WriteM0Async(true);
+        // Re-evaluate M0 from the currently selected product + latest scan state.
+        await ReapplyM0ForCurrentSelectionAsync();
 
         if (!productProfile.ScanAutoStartEnabled) return null;
 
@@ -133,19 +132,19 @@ public class TestWorkflowService
         var scope = CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<DatabaseService>();
         var modbus = scope.ServiceProvider.GetRequiredService<ModbusService>();
-        var plc = scope.ServiceProvider.GetRequiredService<PlcService>();
-
-        var context = await BuildContextAsync(db, new StartPayload
+        var context = new TestContext
         {
-            ProductModel = payload.ProductModel,
-            OperatorName = payload.OperatorName,
+            ProductProfile = await ResolveProductAsync(db, new StartPayload { ProductModel = payload.ProductModel }),
+            Operator = await ResolveOperatorAsync(db, payload.OperatorName),
+            QrCode = "",
+            RecordQrCode = "",
+            ScannerEventId = null,
             StartMode = "manual"
-        }, false);
+        };
         _selectedContext = CreateSelectedContext(context);
         _pendingContext = CreatePendingContext(context, false);
 
-        // M0: ON for scan-free products (PLC "ready, no scan needed"), OFF otherwise
-        await ApplyScanFreeM0Async(plc, context.ProductProfile);
+        await ReapplyM0ForCurrentSelectionAsync();
 
         int? currentProgram = null;
         await modbus.SelectProgramAsync(context.ProductProfile.AteqProgramNo);
@@ -178,28 +177,74 @@ public class TestWorkflowService
     public bool IsSelectedProductScanFree() =>
         _selectedContext?.ProductProfile is { } p && IsScanFreeProduct(p);
 
-    /// <summary>Write M0=ON if scan-free, M0=OFF if not. Fire-and-forget.</summary>
-    private static async Task ApplyScanFreeM0Async(PlcService plc, ProductProfile product)
+    private static bool DoesScanSatisfyProduct(ProductProfile product, string? qrCode)
     {
         if (IsScanFreeProduct(product))
-            await plc.WriteM0Async(true);
+            return true;
+
+        var normalizedQrCode = (qrCode ?? "").Trim();
+        if (string.IsNullOrEmpty(normalizedQrCode))
+            return false;
+
+        if (!product.ScanMatchEnabled)
+            return true;
+
+        var keyword = (product.QrKeyword ?? "").Trim();
+        if (string.IsNullOrEmpty(keyword))
+            return false;
+
+        return normalizedQrCode.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<ProductProfile?> GetFreshSelectedProductProfileAsync()
+    {
+        var selectedProduct = _selectedContext?.ProductProfile;
+        if (selectedProduct == null) return null;
+
+        var scope = CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var fresh = await db.GetProductProfileByModelAsync(selectedProduct.ProductModel);
+        if (fresh == null) return null;
+
+        _selectedContext!.ProductProfile = fresh;
+
+        if (_pendingContext?.ProductProfile != null &&
+            string.Equals(_pendingContext.ProductProfile.ProductModel, fresh.ProductModel, StringComparison.OrdinalIgnoreCase))
+        {
+            _pendingContext.ProductProfile = fresh;
+        }
+
+        return fresh;
+    }
+
+    /// <summary>Write M0 based on the currently selected product and latest scan visibility.</summary>
+    public async Task ReapplyM0ForCurrentSelectionAsync()
+    {
+        var scope = CreateScope();
+        var plc = scope.ServiceProvider.GetRequiredService<PlcService>();
+        var scanner = scope.ServiceProvider.GetRequiredService<ScannerService>();
+
+        var product = await GetFreshSelectedProductProfileAsync();
+        var latestScan = scanner.GetLatestVisibleScan();
+        var desired = product != null && product.IsActive && DoesScanSatisfyProduct(product, latestScan?.RawText);
+        var confirmed = await plc.WriteM0Async(desired);
+        if (confirmed)
+        {
+            Console.WriteLine($"[workflow] M0 applied {(desired ? "ON" : "OFF")} for product {product?.ProductModel ?? "(none)"}");
+        }
         else
-            await plc.WriteM0Async(false);
+        {
+            Console.WriteLine($"[workflow] M0 apply not confirmed for product {product?.ProductModel ?? "(none)"} (desired={(desired ? "ON" : "OFF")})");
+        }
     }
 
     /// <summary>
-    /// Restore M0=ON after test completion or reset, if the current
-    /// selected product is still scan-free. Called by coordinator.
+    /// Backward-compatible wrapper used by older coordinator call sites.
+    /// Re-applies M0 using the current selected product + visible scan state.
     /// </summary>
     public async Task RestoreScanFreeM0IfNeededAsync()
     {
-        if (_selectedContext?.ProductProfile is { } p && IsScanFreeProduct(p))
-        {
-            var scope = CreateScope();
-            var plc = scope.ServiceProvider.GetRequiredService<PlcService>();
-            await plc.WriteM0Async(true);
-            Console.WriteLine($"[workflow] M0 restored (scan-free product: {p.ProductModel})");
-        }
+        await ReapplyM0ForCurrentSelectionAsync();
     }
 
     // ==================== Start ====================
@@ -542,6 +587,7 @@ public class TestWorkflowService
                     if (!string.IsNullOrEmpty(scannerEventId))
                         await db.DeleteScannerEventByIdAsync(scannerEventId);
                     scanner.ConsumeCurrentScan(new { ScannerEventId = scannerEventId, QrCode = qrCode });
+                    await ReapplyM0ForCurrentSelectionAsync();
                     state.QrCode = "";
                     state.ScannerEventId = null;
                 }
@@ -907,4 +953,3 @@ public class TestWorkflowException : Exception
         Cause = cause;
     }
 }
-

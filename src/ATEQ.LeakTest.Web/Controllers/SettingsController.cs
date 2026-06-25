@@ -1,6 +1,7 @@
 using ATEQ.LeakTest.Web.Data;
 using ATEQ.LeakTest.Web.Models;
 using ATEQ.LeakTest.Web.Models.Dto;
+using ATEQ.LeakTest.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ATEQ.LeakTest.Web.Controllers;
@@ -19,7 +20,9 @@ public class SettingsController : ControllerBase
     [HttpPost("products")]
     public async Task<IActionResult> SaveProducts(
         [FromBody] ProductProfilesRequest body,
-        [FromServices] DatabaseService db)
+        [FromServices] DatabaseService db,
+        [FromServices] TestWorkflowService workflow,
+        [FromServices] ScannerService scanner)
     {
         var products = NormalizeProductProfiles(body);
         AssertUniqueBy(products, p => p.ProductModel, "productModel");
@@ -27,6 +30,8 @@ public class SettingsController : ControllerBase
         AssertUniqueBy(products, p => p.AteqProgramNo.ToString(), "ateqProgramNo");
 
         var saved = await db.SaveProductProfilesAsync(products);
+        scanner.ClearLatestScan();
+        await workflow.ReapplyM0ForCurrentSelectionAsync();
         return Ok(new { success = true, message = "Product profiles saved", products = saved });
     }
 
