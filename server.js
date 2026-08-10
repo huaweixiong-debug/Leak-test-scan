@@ -651,7 +651,7 @@ app.post('/api/reset', async (request, response, next) => {
 
 app.get('/api/tests/latest', async (request, response, next) => {
   try {
-    const records = await listTestRecords();
+    const records = await listTestRecords({ includeSamples: false });
     response.json({
       success: true,
       total: records.length,
@@ -760,4 +760,3 @@ async function startServer() {
 }
 
 startServer();
-

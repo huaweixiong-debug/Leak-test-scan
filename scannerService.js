@@ -1,7 +1,10 @@
 const EventEmitter = require('events');
 const { SerialPort } = require('serialport');
 
-const SCAN_IDLE_FLUSH_MS = 80;
+// Some USB virtual COM scanners split one barcode into chunks several seconds apart.
+// The normal frame terminator remains authoritative; this timeout is only a fallback
+// for devices that do not send CR/LF.
+const SCAN_IDLE_FLUSH_MS = 5000;
 const DEBUG_CHUNK_LIMIT = 20;
 
 function normalizeScanText(rawValue) {
@@ -312,6 +315,14 @@ class ScannerService extends EventEmitter {
       boundaryIndex = this.findBoundaryIndex(this.buffer);
     }
 
+    if (!this.buffer) {
+      if (this.flushTimer) {
+        clearTimeout(this.flushTimer);
+        this.flushTimer = null;
+      }
+      return;
+    }
+
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
     }
@@ -320,6 +331,7 @@ class ScannerService extends EventEmitter {
       const payload = this.buffer;
       this.buffer = '';
       this.debugState.bufferPreview = '';
+      this.flushTimer = null;
       this.publishScan(payload);
     }, SCAN_IDLE_FLUSH_MS);
   }

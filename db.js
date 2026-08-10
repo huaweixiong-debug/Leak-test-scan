@@ -362,16 +362,20 @@ async function deleteScannerEventById(id) {
 
 // --- test_records ---
 
-function rowToRecord(r) {
-  try { var samples = JSON.parse(r[21]||'[]'); } catch { samples = []; }
-  samples = Array.isArray(samples)
-    ? samples.map((sample) => ({
-        ...sample,
-        leak: normalizeLegacyLeakValue(sample.leak),
-        pressureUnit: normalizeUnitLabel(sample.pressureUnit),
-        leakUnit: normalizeUnitLabel(sample.leakUnit)
-      }))
-    : [];
+function rowToRecord(r, options = {}) {
+  const includeSamples = options.includeSamples !== false;
+  let samples = [];
+  if (includeSamples) {
+    try { samples = JSON.parse(r[21]||'[]'); } catch { samples = []; }
+    samples = Array.isArray(samples)
+      ? samples.map((sample) => ({
+          ...sample,
+          leak: normalizeLegacyLeakValue(sample.leak),
+          pressureUnit: normalizeUnitLabel(sample.pressureUnit),
+          leakUnit: normalizeUnitLabel(sample.leakUnit)
+        }))
+      : [];
+  }
   const storedResultCode = String(r[17] || 'UNKNOWN').trim().toUpperCase();
   const derivedResultCode = decodeResultCode(r[19]);
   const storedErrorCode = r[18] || null;
@@ -386,7 +390,9 @@ function rowToRecord(r) {
     resultCode,
     errorCode,
     errorText: deriveErrorText(r[19], errorCode, resultCode),
-    rawStatusWord: r[19], sampleCount: r[20], samples, updatedAt: r[22] };
+    rawStatusWord: r[19], sampleCount: r[20],
+    ...(includeSamples ? { samples } : {}),
+    updatedAt: r[22] };
 }
 
 async function saveTestRecord(record) {
@@ -431,8 +437,8 @@ async function saveTestRecord(record) {
   return rowToRecord(saved);
 }
 
-async function listTestRecords() {
-  const rows = execAll('SELECT * FROM test_records').map(rowToRecord);
+async function listTestRecords(options = {}) {
+  const rows = execAll('SELECT * FROM test_records').map((row) => rowToRecord(row, options));
   // Sort newest first
   rows.sort((a, b) => {
     const ta = Date.parse(a.startedAt) || 0;
